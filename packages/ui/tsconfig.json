@@ -1,0 +1,14 @@
+{
+  "extends": "@grocery/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "react-jsx",
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

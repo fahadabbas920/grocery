@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+.expo/
+*.tsbuildinfo
+
+# env — NEVER commit real secrets; only .env.example is tracked
+.env
+.env.*
+!.env.example
+
+# supabase
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# expo / native
+apps/rider/ios/
+apps/rider/android/
+*.apk
+*.aab
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+.vercel
+coverage/

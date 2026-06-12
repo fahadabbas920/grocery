@@ -1,0 +1,31 @@
+{
+  "name": "grocery",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.26.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "db:types": "supabase gen types typescript --linked > packages/db/src/types.gen.ts",
+    "db:push": "supabase db push",
+    "db:lint": "supabase db lint",
+    "db:reset": "supabase db reset"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^19.1.17",
+      "@types/react-dom": "^19.1.5"
+    }
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3"
+  }
+}

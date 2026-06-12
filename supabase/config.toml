@@ -1,0 +1,39 @@
+# Supabase local/project config. `project_id` is set after `supabase link`.
+project_id = "grocery"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+# Add deployed URLs here once domains are live (ops, shop).
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:3001"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false # MVP: skip email confirmation. Enable for production.
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[realtime]
+enabled = true
+
+[edge_runtime]
+enabled = true

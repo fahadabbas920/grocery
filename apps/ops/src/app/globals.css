@@ -1,0 +1,6 @@
+/* Import the shared design system (Tailwind v4 + tokens). */
+@import "@grocery/ui/styles.css";
+
+/* Tell Tailwind v4 to scan the app and the shared UI package for class usage. */
+@source "../**/*.{ts,tsx}";
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";

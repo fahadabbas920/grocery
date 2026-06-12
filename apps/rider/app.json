@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Grocery Rider",
+    "slug": "grocery-rider",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "groceryrider",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.grocery.rider",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": true,
+          "locationAlwaysAndWhenInUsePermission": "Grocery Rider uses your location to share live delivery tracking with customers."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
+    }
+  }
+}

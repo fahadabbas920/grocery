@@ -6,7 +6,7 @@ import { EmptyState } from "@grocery/ui";
 import { useCart } from "@/lib/cart/cart-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { placeOrder } from "@/app/cart/actions";
-import { Minus, Plus, ShoppingBag, Trash2, MapPin, Banknote } from "lucide-react";
+import { Minus, Package, Plus, ShoppingBag, Trash2, MapPin, Banknote } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
@@ -21,36 +21,44 @@ export function CartView() {
     setPlacing(true);
     setError(null);
 
-    const {
-      data: { user },
-    } = await getBrowserSupabase().auth.getUser();
-    if (!user) {
-      router.push("/login?redirect=/cart");
-      return;
-    }
+    try {
+      const {
+        data: { user },
+      } = await getBrowserSupabase().auth.getUser();
+      if (!user) {
+        router.push("/login?redirect=/cart");
+        setPlacing(false);
+        return;
+      }
 
-    const coords = await new Promise<{ lat: number; lng: number }>((resolve) => {
-      if (!navigator.geolocation) return resolve({ lat: 0, lng: 0 });
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => resolve({ lat: 0, lng: 0 }),
-      );
-    });
+      const coords = await new Promise<{ lat: number; lng: number }>((resolve) => {
+        if (!navigator.geolocation) return resolve({ lat: 0, lng: 0 });
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve({ lat: 0, lng: 0 }),
+        );
+      });
 
-    const result = await placeOrder({
-      items: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
-      address,
-      delivery_lat: coords.lat,
-      delivery_lng: coords.lng,
-    });
+      const result = await placeOrder({
+        items: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
+        address,
+        delivery_lat: coords.lat,
+        delivery_lng: coords.lng,
+      });
 
-    if (result && !result.ok) {
-      setError(result.error ?? "Could not place order");
-      toast.error(result.error ?? "Could not place order");
+      if (!result.ok) {
+        setError(result.error ?? "Could not place order");
+        toast.error(result.error ?? "Could not place order");
+        setPlacing(false);
+        return;
+      }
+      clear();
+      router.push(`/orders/${result.orderId}`);
+    } catch {
+      setError("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
       setPlacing(false);
-      return;
     }
-    clear();
   }
 
   if (lines.length === 0) {
@@ -86,8 +94,8 @@ export function CartView() {
               key={line.product_id}
               className="flex items-center gap-4 rounded-xl border border-(--color-border) bg-(--color-background) p-4"
             >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-(--color-muted) text-xl">
-                🛒
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-(--color-muted)">
+                <Package className="h-5 w-5 text-(--color-muted-foreground)" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate font-medium text-(--color-foreground)">{line.name}</p>

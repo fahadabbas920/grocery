@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { placeOrderSchema, type CartItem } from "@grocery/shared";
 import { getServerSupabase } from "@/lib/supabase/server";
 
@@ -73,7 +72,11 @@ export async function placeOrder(input: {
     unit_price: priceById.get(item.product_id) ?? 0,
   }));
   const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert);
-  if (itemsError) return { ok: false, error: itemsError.message };
+  if (itemsError) {
+    // Roll back the orphaned order so the DB stays consistent.
+    await supabase.from("orders").delete().eq("id", order.id);
+    return { ok: false, error: itemsError.message };
+  }
 
-  redirect(`/orders/${order.id}`);
+  return { ok: true, orderId: order.id };
 }

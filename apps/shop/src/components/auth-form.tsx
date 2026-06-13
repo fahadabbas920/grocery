@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -24,7 +24,6 @@ function Field({
 }
 
 export function AuthForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const redirectTo = params.get("redirect") ?? "/";
 
@@ -56,8 +55,10 @@ export function AuthForm() {
       setLoading(false);
       return;
     }
-    router.replace(redirectTo);
-    router.refresh();
+    // Hard navigation so the browser sends a fresh request with the new session
+    // cookies, bypassing any stale Next.js RSC cache that would re-trigger the
+    // server-side redirect to /login.
+    window.location.replace(redirectTo);
   }
 
   const inputClass =

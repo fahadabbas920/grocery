@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ShoppingCart, ClipboardList, LogIn, LogOut, User } from "lucide-react";
+import { ShoppingCart, ClipboardList, LogIn, LogOut } from "lucide-react";
 import { useCart } from "@/lib/cart/cart-context";
 import { useSearch } from "@/lib/search-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -11,14 +11,16 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function ShopHeader() {
   const { count, setIsOpen } = useCart();
-  const { query, setQuery } = useSearch();
+  useSearch(); // keep provider mounted; search input lives in CatalogBrowser
   const router = useRouter();
   const [user, setUser] = useState<SupabaseUser | null>(null);
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
@@ -31,8 +33,13 @@ export function ShopHeader() {
   }
 
   const initials = user?.user_metadata?.full_name
-    ? (user.user_metadata.full_name as string).split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
-    : user?.email?.[0]?.toUpperCase() ?? "?";
+    ? (user.user_metadata.full_name as string)
+        .split(" ")
+        .map((w: string) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : (user?.email?.[0]?.toUpperCase() ?? "?");
 
   return (
     <header className="sticky top-0 z-20 border-b border-(--color-border) bg-(--color-background)">
@@ -46,11 +53,6 @@ export function ShopHeader() {
             Grocery
           </span>
         </Link>
-
-        <div className="hidden sm:flex items-center gap-1 text-(--color-muted-foreground)">
-          <span className="text-xs font-medium">📍 Delivering now</span>
-        </div>
-
         <div className="flex items-center gap-1">
           <Link
             href="/orders"
@@ -101,19 +103,6 @@ export function ShopHeader() {
         </div>
       </div>
 
-      {/* Search row */}
-      <div className="px-4 pb-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--color-muted-foreground)" />
-          <input
-            type="search"
-            placeholder="Search for groceries, milk, eggs…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="h-10 w-full rounded-xl border border-(--color-border) bg-(--color-muted) pl-9 pr-4 text-sm placeholder:text-(--color-muted-foreground) focus:border-(--color-ring) focus:bg-(--color-background) focus:outline-none focus:ring-2 focus:ring-ring/20 transition-colors"
-          />
-        </div>
-      </div>
     </header>
   );
 }

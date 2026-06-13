@@ -1,4 +1,5 @@
 export { cn } from "./lib/utils";
+export * from "./order-status-config";
 export * from "./components/button";
 export * from "./components/card";
 export * from "./components/badge";

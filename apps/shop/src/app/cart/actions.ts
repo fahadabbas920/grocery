@@ -27,9 +27,15 @@ export async function placeOrder(input: {
   }
 
   const supabase = await getServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    return { ok: false, error: "Service temporarily unavailable. Please try again." };
+  }
+
   if (!user) return { ok: false, error: "Not authenticated" };
 
   // Fetch authoritative prices + stock for the ordered products.

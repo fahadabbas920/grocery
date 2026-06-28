@@ -17,7 +17,7 @@ export function ShopHeader() {
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getUser().then(({ data }) => setUser(data.user)).catch(() => {});
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {

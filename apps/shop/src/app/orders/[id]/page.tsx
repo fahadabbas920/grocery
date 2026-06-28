@@ -6,9 +6,15 @@ import { OrderTracker } from "@/components/order-tracker";
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await getServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    redirect(`/login?redirect=/orders/${id}`);
+  }
+
   if (!user) redirect(`/login?redirect=/orders/${id}`);
 
   let order;

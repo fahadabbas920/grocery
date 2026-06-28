@@ -26,11 +26,18 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
+
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Supabase unreachable — redirect to login rather than crash.
+    if (!isLoginPage) return NextResponse.redirect(new URL("/login", request.url));
+    return response;
+  }
+
   if (!user && !isLoginPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

@@ -15,9 +15,14 @@ export interface SessionProfile {
  */
 export async function requireOpsProfile(): Promise<SessionProfile> {
   const supabase = await getServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    redirect("/login");
+  }
 
   if (!user) redirect("/login");
 

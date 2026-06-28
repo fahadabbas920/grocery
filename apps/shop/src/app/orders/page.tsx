@@ -13,9 +13,15 @@ function formatOrderCode(id: string) {
 
 export default async function OrdersPage() {
   const supabase = await getServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    redirect("/login?redirect=/orders");
+  }
+
   if (!user) redirect("/login?redirect=/orders");
 
   const orders = await getMyOrders(supabase, user.id);

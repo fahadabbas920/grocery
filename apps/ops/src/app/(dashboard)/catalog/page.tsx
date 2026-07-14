@@ -6,10 +6,7 @@ import { CatalogGrid } from "@/components/catalog-grid";
 
 export default async function CatalogPage() {
   const supabase = await getServerSupabase();
-  const [products, categories] = await Promise.all([
-    getCatalog(supabase),
-    getCategories(supabase),
-  ]);
+  const [products, categories] = await Promise.all([getCatalog(supabase), getCategories(supabase)]);
 
   const mapped = products.map((p) => {
     const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;

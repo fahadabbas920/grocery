@@ -91,6 +91,17 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.7 0.19 145);
+  /* Sidebar (dark) */
+  --sidebar-bg: oklch(0.205 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-item-active: oklch(0.32 0.06 145);
+  --sidebar-item-active-text: oklch(0.82 0.15 145);
+  --sidebar-item-hover: oklch(0.27 0.02 145);
+  /* Semantic status (dark) */
+  --warning: oklch(0.8 0.16 70);
+  --warning-foreground: oklch(0.145 0 0);
+  --success: oklch(0.7 0.19 145);
+  --success-foreground: oklch(0.145 0 0);
 }
 
 @layer base {

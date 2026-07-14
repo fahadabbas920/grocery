@@ -10,3 +10,4 @@ export * from "./components/empty-state";
 export * from "./components/stats-card";
 export * from "./components/page-header";
 export * from "./components/section-chip";
+export * from "./components/skeleton";

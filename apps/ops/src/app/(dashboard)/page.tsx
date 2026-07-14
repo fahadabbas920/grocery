@@ -19,8 +19,7 @@ export default async function DashboardHome() {
   ]);
 
   const revenue = delivered.reduce((sum, o) => sum + Number(o.total), 0);
-  const avgOrderValue =
-    delivered.length > 0 ? Math.round(revenue / delivered.length) : 0;
+  const avgOrderValue = delivered.length > 0 ? Math.round(revenue / delivered.length) : 0;
 
   const recent = [...active, ...delivered]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -28,10 +27,7 @@ export default async function DashboardHome() {
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        description="Live overview of your delivery operations"
-      />
+      <PageHeader title="Dashboard" description="Live overview of your delivery operations" />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatsCard

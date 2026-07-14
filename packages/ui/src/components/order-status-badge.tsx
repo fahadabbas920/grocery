@@ -1,15 +1,16 @@
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@grocery/shared";
 import { Badge } from "./badge";
+import { ORDER_STATUS_CONFIG } from "../order-status-config";
 
-const VARIANT_BY_STATUS: Record<OrderStatus, React.ComponentProps<typeof Badge>["variant"]> = {
-  placed: "secondary",
-  preparing: "default",
-  on_the_way: "default",
-  delivered: "outline",
-  cancelled: "destructive",
-};
-
-/** Renders an order's status with a consistent color across all surfaces. */
+/**
+ * Renders an order's status as a colored pill. Colors come from the SINGLE source
+ * of truth — `ORDER_STATUS_CONFIG` — so the badge matches the status cards, hero
+ * banners, and steppers that consume the same config everywhere.
+ */
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  return <Badge variant={VARIANT_BY_STATUS[status]}>{ORDER_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge variant="outline" className={ORDER_STATUS_CONFIG[status].badge}>
+      {ORDER_STATUS_LABELS[status]}
+    </Badge>
+  );
 }

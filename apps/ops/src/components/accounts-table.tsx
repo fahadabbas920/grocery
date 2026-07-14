@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge } from "@grocery/ui";
+import { Badge, EmptyState } from "@grocery/ui";
+import { Users } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -39,8 +40,8 @@ function initials(name: string | null) {
 function UserTable({ users }: { users: User[] }) {
   if (users.length === 0) {
     return (
-      <div className="rounded-xl border border-(--color-border) bg-(--color-card) px-4 py-10 text-center text-sm text-(--color-muted-foreground)">
-        No users in this group.
+      <div className="rounded-xl border border-(--color-border) bg-(--color-card)">
+        <EmptyState icon={<Users className="h-6 w-6" />} title="No users in this group" />
       </div>
     );
   }

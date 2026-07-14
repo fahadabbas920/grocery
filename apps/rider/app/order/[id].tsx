@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,10 +11,13 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getOrderWithItems } from "@grocery/db/queries";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@grocery/shared";
+import { getOrderWithItems, updateOrderStatus } from "@grocery/db/queries";
+import type { OrderStatus } from "@grocery/shared";
 import { supabase } from "@/lib/supabase";
 import { startLocationSharing, stopLocationSharing } from "@/lib/location-task";
+import { Button, Card, EmptyState, StatusBadge } from "@/components";
+import { formatMoney, formatOrderRef } from "@/lib/format";
+import { colors, fontSize, radius, spacing } from "@/theme";
 
 interface OrderDetail {
   id: string;
@@ -27,23 +30,20 @@ interface OrderDetail {
   createdAt: string;
 }
 
-const STATUS_COLOR: Record<OrderStatus, string> = {
-  placed: "#f59e0b",
-  preparing: "#3b82f6",
-  on_the_way: "#8b5cf6",
-  delivered: "#16a34a",
-  cancelled: "#ef4444",
-};
-
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) return;
-    getOrderWithItems(supabase, id).then((o) =>
+    setLoading(true);
+    setError(false);
+    try {
+      const o = await getOrderWithItems(supabase, id);
       setOrder({
         id: o.id,
         status: o.status,
@@ -57,107 +57,167 @@ export default function OrderDetailScreen() {
           unitPrice: Number(i.unit_price),
         })),
         createdAt: o.created_at,
-      }),
-    );
+      });
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  if (!order) {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Watch for external status changes (e.g. ops cancels the order). If the order
+  // leaves `on_the_way`, stop any background GPS sharing so it doesn't leak.
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`order-detail-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` },
+        (payload) => {
+          const next = payload.new as { status: OrderStatus };
+          setOrder((prev) => (prev ? { ...prev, status: next.status } : prev));
+          if (next.status !== "on_the_way") void stopLocationSharing();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [id]);
+
+  if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#16a34a" />
+        <ActivityIndicator size="large" color={colors.brand} />
       </View>
     );
   }
 
-  const statusColor = STATUS_COLOR[order.status];
+  if (error || !order) {
+    return (
+      <View style={styles.loading}>
+        <EmptyState
+          icon="cloud-offline-outline"
+          iconColor={colors.textDisabled}
+          title="Couldn't load order"
+          subtitle="Check your connection and try again."
+          actionLabel="Retry"
+          onAction={() => void load()}
+        />
+      </View>
+    );
+  }
+
   const canStart = order.status === "preparing";
   const canDeliver = order.status === "on_the_way";
 
-  function openMaps() {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${order!.lat},${order!.lng}`;
-    Linking.openURL(url);
+  async function openMaps() {
+    if (!order) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert("Can't open maps", "No app is available to open the map link.");
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Can't open maps", "Something went wrong opening the map link.");
+    }
   }
 
   async function updateStatus(next: OrderStatus) {
     if (!order) return;
     setBusy(true);
-    const { error } = await supabase.from("orders").update({ status: next }).eq("id", order.id);
-    setBusy(false);
-    if (error) {
-      Alert.alert("Update failed", error.message);
-      return;
+    try {
+      await updateOrderStatus(supabase, order.id, next);
+
+      if (next === "on_the_way") {
+        const started = await startLocationSharing();
+        if (!started) {
+          Alert.alert(
+            "Live tracking unavailable",
+            "The delivery was started, but location sharing couldn't begin (permission denied, or you're running Expo Go). The customer won't see live tracking.",
+          );
+        }
+      }
+
+      if (next === "delivered") {
+        await stopLocationSharing();
+        router.replace("/");
+        return;
+      }
+
+      setOrder({ ...order, status: next });
+    } catch (e) {
+      Alert.alert("Update failed", e instanceof Error ? e.message : "Please try again.");
+    } finally {
+      setBusy(false);
     }
-    if (next === "on_the_way") await startLocationSharing();
-    if (next === "delivered") {
-      await stopLocationSharing();
-      router.replace("/");
-      return;
-    }
-    setOrder({ ...order, status: next });
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <View style={styles.statusCard}>
-        <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {ORDER_STATUS_LABELS[order.status]}
-          </Text>
-        </View>
-        <Text style={styles.orderId}>#{order.id.slice(0, 8).toUpperCase()}</Text>
-      </View>
+      <Card style={styles.statusCard}>
+        <StatusBadge status={order.status} dot size="md" />
+        <Text style={styles.orderId}>{formatOrderRef(order.id)}</Text>
+      </Card>
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Delivery address</Text>
-        <View style={styles.addressCard}>
-          <Ionicons name="location" size={18} color="#16a34a" />
+        <Card style={styles.addressCard} padding={14}>
+          <Ionicons name="location" size={18} color={colors.brand} />
           <Text style={styles.addressText}>{order.address}</Text>
-        </View>
-        <TouchableOpacity style={styles.mapsBtn} onPress={openMaps}>
-          <Ionicons name="navigate-outline" size={16} color="#fff" />
+        </Card>
+        <TouchableOpacity style={styles.mapsBtn} onPress={openMaps} activeOpacity={0.85}>
+          <Ionicons name="navigate-outline" size={16} color={colors.white} />
           <Text style={styles.mapsBtnText}>Open in Google Maps</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Items</Text>
-        <View style={styles.itemsCard}>
+        <Card style={styles.itemsCard} padding={0}>
           {order.items.map((item, i) => (
             <View key={i} style={[styles.itemRow, i < order.items.length - 1 && styles.itemBorder]}>
               <Text style={styles.itemQty}>{item.qty}×</Text>
               <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPrice}>PKR {(item.qty * item.unitPrice).toLocaleString()}</Text>
+              <Text style={styles.itemPrice}>{formatMoney(item.qty * item.unitPrice)}</Text>
             </View>
           ))}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Cash to collect</Text>
-            <Text style={styles.totalValue}>PKR {order.total.toLocaleString()}</Text>
+            <Text style={styles.totalValue}>{formatMoney(order.total)}</Text>
           </View>
-        </View>
+        </Card>
       </View>
 
       {(canStart || canDeliver) && (
         <View style={styles.actions}>
           {canStart && (
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnPrimary]}
-              onPress={() => updateStatus("on_the_way")}
+            <Button
+              label="Start delivery"
+              icon="bicycle-outline"
+              variant="purple"
+              loading={busy}
               disabled={busy}
-            >
-              <Ionicons name="bicycle-outline" size={20} color="#fff" />
-              <Text style={styles.actionBtnText}>Start delivery</Text>
-            </TouchableOpacity>
+              onPress={() => updateStatus("on_the_way")}
+            />
           )}
           {canDeliver && (
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnGreen]}
-              onPress={() => updateStatus("delivered")}
+            <Button
+              label="Mark as delivered"
+              icon="checkmark-circle-outline"
+              variant="green"
+              loading={busy}
               disabled={busy}
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-              <Text style={styles.actionBtnText}>Mark as delivered</Text>
-            </TouchableOpacity>
+              onPress={() => updateStatus("delivered")}
+            />
           )}
         </View>
       )}
@@ -166,88 +226,62 @@ export default function OrderDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, alignItems: "center", justifyContent: "center" },
-  screen: { backgroundColor: "#f8fafc" },
-  container: { padding: 16, gap: 16, paddingBottom: 40 },
+  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
+  screen: { backgroundColor: colors.bg },
+  container: { padding: spacing.lg, gap: spacing.lg, paddingBottom: 40 },
   statusCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
-  statusPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontWeight: "700", fontSize: 13 },
-  orderId: { fontSize: 12, fontFamily: "monospace", color: "#9ca3af", fontWeight: "600" },
-  section: { gap: 8 },
-  sectionLabel: { fontSize: 12, fontWeight: "600", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 },
-  addressCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+  orderId: {
+    fontSize: fontSize.sm,
+    fontFamily: "monospace",
+    color: colors.textFaint,
+    fontWeight: "600",
   },
-  addressText: { flex: 1, fontSize: 15, color: "#111827", lineHeight: 22 },
+  section: { gap: spacing.sm },
+  sectionLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  addressCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm + 2 },
+  addressText: { flex: 1, fontSize: fontSize.lg, color: colors.text, lineHeight: 22 },
   mapsBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#1d4ed8",
-    borderRadius: 10,
-    padding: 12,
+    gap: spacing.xs + 2,
+    backgroundColor: colors.blue,
+    borderRadius: radius.md,
+    padding: spacing.md,
   },
-  mapsBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
-  itemsCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+  mapsBtnText: { color: colors.white, fontWeight: "600", fontSize: fontSize.base },
+  itemsCard: { overflow: "hidden" },
+  itemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: spacing.md,
+    gap: spacing.sm + 2,
   },
-  itemRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
-  itemBorder: { borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
-  itemQty: { fontSize: 13, color: "#6b7280", width: 28 },
-  itemName: { flex: 1, fontSize: 14, color: "#111827" },
-  itemPrice: { fontSize: 13, fontWeight: "600", color: "#374151" },
+  itemBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  itemQty: { fontSize: fontSize.md, color: colors.textMuted, width: 28 },
+  itemName: { flex: 1, fontSize: fontSize.base, color: colors.text },
+  itemPrice: { fontSize: fontSize.md, fontWeight: "600", color: colors.textSecondary },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: "#f0fdf4",
+    paddingVertical: spacing.md,
+    backgroundColor: colors.brandBg,
     borderTopWidth: 1,
-    borderTopColor: "#dcfce7",
+    borderTopColor: colors.brandBgDeep,
   },
-  totalLabel: { fontSize: 14, fontWeight: "700", color: "#166534" },
-  totalValue: { fontSize: 16, fontWeight: "700", color: "#16a34a" },
-  actions: { gap: 10, marginTop: 4 },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 12,
-    padding: 16,
-  },
-  actionBtnPrimary: { backgroundColor: "#8b5cf6" },
-  actionBtnGreen: { backgroundColor: "#16a34a" },
-  actionBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  totalLabel: { fontSize: fontSize.base, fontWeight: "700", color: colors.brandText },
+  totalValue: { fontSize: fontSize.xl, fontWeight: "700", color: colors.brand },
+  actions: { gap: spacing.sm + 2, marginTop: spacing.xs },
 });

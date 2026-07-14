@@ -9,6 +9,7 @@ Expo SDK 54 (React Native 0.81) + Expo Router. Distributed as an **APK** (no sto
 > the app still loads there. Test live tracking with a development build.
 
 ## Screens (`app/`)
+
 - `_layout.tsx` — auth gate (redirects to `/login` when signed out); registers the
   background location task at startup.
 - `login.tsx` — rider sign-in.
@@ -17,6 +18,7 @@ Expo SDK 54 (React Native 0.81) + Expo Router. Distributed as an **APK** (no sto
   (→ `on_the_way` + begin GPS sharing), "Mark delivered" (→ `delivered` + stop GPS).
 
 ## Background GPS
+
 `lib/location-task.ts` defines a `TaskManager` task that upserts the rider's position
 to `rider_locations` (RLS restricts to own row), throttled by
 `RIDER_GPS_THROTTLE_MS` from `@grocery/shared`. Requires foreground + background
@@ -24,19 +26,24 @@ location permission (declared in `app.json`, Android foreground service).
 In Expo Go this is skipped (`IS_EXPO_GO` guard) — only a dev/EAS build runs it.
 
 ## Supabase
+
 `lib/supabase.ts` wraps `@grocery/db/native` (AsyncStorage session).
 
 ## Monorepo notes
+
 `metro.config.js` watches the workspace root and follows pnpm symlinks so shared
 packages hot-reload.
 
 ## Env (`.env.example` → `.env`)
+
 `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
 `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`.
 
 ## Run / build
+
 ```
 pnpm -F @grocery/rider dev          # Expo dev server
 pnpm -F @grocery/rider build:apk    # eas build -p android --profile preview (APK)
 ```
+
 Set the EAS `projectId` in `app.json` and run `eas login` before building.

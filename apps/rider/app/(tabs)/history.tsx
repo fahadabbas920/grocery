@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { useCallback, useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { getRiderOrderHistory } from "@grocery/db/queries";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@grocery/shared";
+import type { OrderStatus } from "@grocery/shared";
 import { supabase } from "@/lib/supabase";
+import { EmptyState, OrderCard, StatCard } from "@/components";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useFocusRefetch } from "@/hooks/useFocusRefetch";
+import { formatMoney } from "@/lib/format";
+import { colors, spacing } from "@/theme";
 
 interface HistoryRow {
   id: string;
@@ -20,45 +18,44 @@ interface HistoryRow {
   createdAt: string;
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
-}
-
 export default function OrderHistoryScreen() {
+  const { user } = useCurrentUser();
   const [orders, setOrders] = useState<HistoryRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const rows = await getRiderOrderHistory(supabase, user.id);
-    const mapped = rows.map((o) => ({
-      id: o.id,
-      status: o.status,
-      total: Number(o.total),
-      address: o.address,
-      itemCount: o.items?.length ?? 0,
-      createdAt: o.created_at,
-    }));
-    setOrders(mapped);
-    setTotalEarnings(
-      mapped.filter((o) => o.status === "delivered").reduce((sum, o) => sum + o.total, 0),
-    );
-  }, []);
+    try {
+      const rows = await getRiderOrderHistory(supabase, user.id);
+      const mapped = rows.map((o) => ({
+        id: o.id,
+        status: o.status,
+        total: Number(o.total),
+        address: o.address,
+        itemCount: o.items?.length ?? 0,
+        createdAt: o.created_at,
+      }));
+      setOrders(mapped);
+      setTotalEarnings(
+        mapped.filter((o) => o.status === "delivered").reduce((sum, o) => sum + o.total, 0),
+      );
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }, [user]);
 
-  useEffect(() => { void load(); }, [load]);
+  useFocusRefetch(load);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
   }, [load]);
 
   const deliveredCount = orders.filter((o) => o.status === "delivered").length;
@@ -69,105 +66,51 @@ export default function OrderHistoryScreen() {
       contentContainerStyle={[styles.list, orders.length === 0 && styles.listEmpty]}
       data={orders}
       keyExtractor={(item) => item.id}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#16a34a" />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />
+      }
       ListHeaderComponent={
         orders.length > 0 ? (
           <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Ionicons name="checkmark-circle-outline" size={20} color="#16a34a" />
-              <Text style={styles.summaryValue}>{deliveredCount}</Text>
-              <Text style={styles.summaryLabel}>Delivered</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Ionicons name="cash-outline" size={20} color="#16a34a" />
-              <Text style={styles.summaryValue}>PKR {totalEarnings.toLocaleString()}</Text>
-              <Text style={styles.summaryLabel}>Total collected</Text>
-            </View>
+            <StatCard
+              icon="checkmark-circle-outline"
+              value={String(deliveredCount)}
+              label="Delivered"
+            />
+            <StatCard
+              icon="cash-outline"
+              value={formatMoney(totalEarnings)}
+              label="Total collected"
+            />
           </View>
         ) : null
       }
       ListEmptyComponent={
-        <View style={styles.emptyState}>
-          <Ionicons name="time-outline" size={64} color="#d1fae5" />
-          <Text style={styles.emptyTitle}>No history yet</Text>
-          <Text style={styles.emptySubtitle}>Completed deliveries will appear here.</Text>
-        </View>
+        error ? (
+          <EmptyState
+            icon="cloud-offline-outline"
+            iconColor={colors.textDisabled}
+            title="Couldn't load history"
+            subtitle="Check your connection and try again."
+            actionLabel="Retry"
+            onAction={onRefresh}
+          />
+        ) : (
+          <EmptyState
+            icon="time-outline"
+            title="No history yet"
+            subtitle="Completed deliveries will appear here."
+          />
+        )
       }
-      renderItem={({ item }) => {
-        const isDelivered = item.status === "delivered";
-        return (
-          <View style={styles.card}>
-            <View style={[styles.statusDot, { backgroundColor: isDelivered ? "#16a34a" : "#ef4444" }]} />
-            <View style={styles.cardContent}>
-              <View style={styles.cardTop}>
-                <Text style={styles.orderId}>#{item.id.slice(0, 8).toUpperCase()}</Text>
-                <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
-              </View>
-              <View style={styles.addressRow}>
-                <Ionicons name="location-outline" size={13} color="#6b7280" />
-                <Text style={styles.address} numberOfLines={1}>{item.address}</Text>
-              </View>
-              <View style={styles.cardBottom}>
-                <Text style={styles.date}>{formatDate(item.createdAt)} · {item.itemCount} item{item.itemCount !== 1 ? "s" : ""}</Text>
-                <View style={styles.rightGroup}>
-                  <Text style={[styles.statusLabel, { color: isDelivered ? "#16a34a" : "#ef4444" }]}>
-                    {ORDER_STATUS_LABELS[item.status]}
-                  </Text>
-                  <Text style={styles.total}>PKR {item.total.toLocaleString()}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        );
-      }}
+      renderItem={({ item }) => <OrderCard order={item} variant="history" />}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: "#f8fafc" },
+  screen: { backgroundColor: colors.bg },
   list: { padding: 16, gap: 10 },
   listEmpty: { flex: 1 },
-  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, paddingTop: 80 },
-  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
-  emptySubtitle: { fontSize: 14, color: "#6b7280" },
-  summaryRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    gap: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  summaryValue: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  summaryLabel: { fontSize: 11, color: "#6b7280" },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    flexDirection: "row",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  statusDot: { width: 4 },
-  cardContent: { flex: 1, padding: 12, gap: 5 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between" },
-  orderId: { fontSize: 11, fontFamily: "monospace", color: "#9ca3af", fontWeight: "600" },
-  time: { fontSize: 11, color: "#9ca3af" },
-  addressRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  address: { fontSize: 13, color: "#374151", flex: 1 },
-  cardBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  date: { fontSize: 11, color: "#9ca3af" },
-  rightGroup: { alignItems: "flex-end", gap: 1 },
-  statusLabel: { fontSize: 11, fontWeight: "600" },
-  total: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  summaryRow: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.xs },
 });

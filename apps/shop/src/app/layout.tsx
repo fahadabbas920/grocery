@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { BRAND_GREEN_HEX } from "@grocery/shared";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart/cart-context";
 import { SearchProvider } from "@/lib/search-context";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#16a34a",
+  themeColor: BRAND_GREEN_HEX,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

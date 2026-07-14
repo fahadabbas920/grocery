@@ -22,6 +22,13 @@ export const REALTIME = {
 /** Rider GPS sampling: write at most this often while a delivery is active (ms). */
 export const RIDER_GPS_THROTTLE_MS = 10_000;
 
+/**
+ * Brand green as a concrete hex — for contexts that can't use CSS tokens:
+ * the PWA manifest/theme-color and non-CSS map SDK marker colors. Keep in sync
+ * with `--primary` in packages/ui/src/styles/globals.css.
+ */
+export const BRAND_GREEN_HEX = "#16a34a";
+
 /** Keys for the `app_settings` table (runtime feature flags). */
 export const SETTING_KEYS = {
   mapsEnabled: "maps_enabled",

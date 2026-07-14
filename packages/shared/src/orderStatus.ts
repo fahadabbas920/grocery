@@ -5,7 +5,13 @@
  * trigger (see supabase/migrations). Keep all three in sync.
  */
 
-export const ORDER_STATUSES = ["placed", "preparing", "on_the_way", "delivered", "cancelled"] as const;
+export const ORDER_STATUSES = [
+  "placed",
+  "preparing",
+  "on_the_way",
+  "delivered",
+  "cancelled",
+] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -17,6 +23,21 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
+
+/** One-line subtitle per status for customer-facing tracking UI. */
+export const ORDER_STATUS_SUBTITLES: Record<OrderStatus, string> = {
+  placed: "We've received your order and will start preparing it shortly.",
+  preparing: "Your order is being carefully prepared.",
+  on_the_way: "Your order is out for delivery. Hang tight!",
+  delivered: "Your order has been delivered successfully.",
+  cancelled: "This order was cancelled.",
+};
+
+/** Format an order UUID as a short, human-readable code: `XXXX-XXXX`. */
+export function formatOrderCode(id: string): string {
+  const upper = id.replace(/-/g, "").toUpperCase().slice(0, 8);
+  return `${upper.slice(0, 4)}-${upper.slice(4)}`;
+}
 
 /**
  * Allowed forward transitions. An order may also be cancelled from any

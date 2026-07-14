@@ -17,7 +17,10 @@ export function ShopHeader() {
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user)).catch(() => {});
+    supabase.auth
+      .getUser()
+      .then(({ data }) => setUser(data.user))
+      .catch(() => {});
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -102,7 +105,6 @@ export function ShopHeader() {
           </button>
         </div>
       </div>
-
     </header>
   );
 }

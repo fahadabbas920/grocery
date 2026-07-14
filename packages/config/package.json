@@ -2,7 +2,12 @@
   "name": "@grocery/config",
   "version": "0.1.0",
   "private": true,
-  "files": ["tsconfig.base.json", "tsconfig.nextjs.json", "tsconfig.react-native.json", "eslint.config.mjs"],
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.nextjs.json",
+    "tsconfig.react-native.json",
+    "eslint.config.mjs"
+  ],
   "exports": {
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.nextjs.json": "./tsconfig.nextjs.json",

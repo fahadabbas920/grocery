@@ -9,17 +9,28 @@ import {
   type OrderStatus,
 } from "@grocery/shared";
 import { toast } from "sonner";
-import { Clock, MapPin, ShoppingBag, User, Zap } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Clock,
+  MapPin,
+  Phone,
+  ShoppingBag,
+  User,
+  UserCheck,
+  Zap,
+} from "lucide-react";
+import { assignRider as assignRiderDb, updateOrderStatus } from "@grocery/db/queries";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@grocery/ui/components/scroll-area";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface OrderRow {
   id: string;
@@ -38,6 +49,21 @@ interface Rider {
 
 type TabFilter = "all" | "active" | "delivered" | "cancelled";
 
+/**
+ * Normalize a raw `orders` row from a realtime payload. PostgREST delivers
+ * `numeric` columns (like `total`) as strings, so they must be coerced or the
+ * money math downstream silently turns into string concatenation.
+ */
+function normalizeOrder(raw: Record<string, unknown>): OrderRow {
+  return {
+    id: raw.id as string,
+    status: raw.status as OrderStatus,
+    total: Number(raw.total),
+    address: raw.address as string,
+    rider_id: (raw.rider_id as string | null) ?? null,
+    created_at: raw.created_at as string,
+  };
+}
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -47,11 +73,23 @@ function timeAgo(iso: string) {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) {
+function StatCard({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  color: string;
+}) {
   return (
     <div className="flex flex-1 flex-col gap-1 rounded-2xl border border-(--color-border) bg-(--color-card) p-4 shadow-sm">
       <span className="text-xs font-medium text-(--color-muted-foreground)">{label}</span>
-      <span className="text-2xl font-bold text-(--color-foreground)" style={{ color }}>{value}</span>
+      <span className="text-2xl font-bold text-(--color-foreground)" style={{ color }}>
+        {value}
+      </span>
       {sub && <span className="text-xs text-(--color-muted-foreground)">{sub}</span>}
     </div>
   );
@@ -66,15 +104,31 @@ export function OrdersBoard({
 }) {
   const [orders, setOrders] = useState<OrderRow[]>(initialOrders);
   const [tab, setTab] = useState<TabFilter>("all");
-  const [mutating, setMutating] = useState<string | null>(null);
+  const [mutating, setMutating] = useState<Set<string>>(new Set());
+  const [riderDialogOrderId, setRiderDialogOrderId] = useState<string | null>(null);
   const supabase = getBrowserSupabase();
+
+  // Per-operation in-flight tracking so concurrent mutations on different orders
+  // don't clear each other's "saving" state.
+  const isMutating = (key: string) => mutating.has(key);
+  const beginMutating = (key: string) => setMutating((s) => new Set(s).add(key));
+  const endMutating = (key: string) =>
+    setMutating((s) => {
+      const next = new Set(s);
+      next.delete(key);
+      return next;
+    });
 
   useEffect(() => {
     const channel = supabase
       .channel(REALTIME.ordersChannel)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
         setOrders((prev) => {
-          const row = payload.new as OrderRow;
+          if (payload.eventType === "DELETE") {
+            const removed = payload.old as { id: string };
+            return prev.filter((o) => o.id !== removed.id);
+          }
+          const row = normalizeOrder(payload.new);
           if (payload.eventType === "INSERT") return [row, ...prev];
           return prev.map((o) => (o.id === row.id ? { ...o, ...row } : o));
         });
@@ -87,25 +141,37 @@ export function OrdersBoard({
 
   async function assignRider(orderId: string, riderId: string) {
     const key = `rider:${orderId}`;
-    if (mutating === key) return;
-    setMutating(key);
-    const { error } = await supabase.from("orders").update({ rider_id: riderId }).eq("id", orderId);
-    if (error) toast.error("Failed to assign rider");
-    else toast.success("Rider assigned");
-    setMutating(null);
+    if (isMutating(key)) return;
+    beginMutating(key);
+    setRiderDialogOrderId(null);
+    try {
+      await assignRiderDb(supabase, orderId, riderId);
+      const rider = riders.find((r) => r.id === riderId);
+      toast.success(`${rider?.full_name ?? "Rider"} assigned`);
+    } catch {
+      toast.error("Failed to assign rider");
+    } finally {
+      endMutating(key);
+    }
   }
 
   async function advanceStatus(orderId: string, next: OrderStatus) {
     const key = `status:${orderId}:${next}`;
-    if (mutating === key) return;
-    setMutating(key);
-    const { error } = await supabase.from("orders").update({ status: next }).eq("id", orderId);
-    if (error) toast.error("Update failed");
-    else toast.success(`Order → ${ORDER_STATUS_LABELS[next]}`);
-    setMutating(null);
+    if (isMutating(key)) return;
+    beginMutating(key);
+    try {
+      await updateOrderStatus(supabase, orderId, next);
+      toast.success(`Order → ${ORDER_STATUS_LABELS[next]}`);
+    } catch {
+      toast.error("Failed to update order");
+    } finally {
+      endMutating(key);
+    }
   }
 
-  const activeOrders = orders.filter((o) => ["placed", "preparing", "on_the_way"].includes(o.status));
+  const activeOrders = orders.filter((o) =>
+    ["placed", "preparing", "on_the_way"].includes(o.status),
+  );
   const revenue = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + o.total, 0);
 
   const filtered = orders.filter((o) => {
@@ -119,13 +185,18 @@ export function OrdersBoard({
     <div className="space-y-5">
       {/* Stats row */}
       <div className="flex gap-3">
-        <StatCard label="Total Orders" value={orders.length} color="#111" />
-        <StatCard label="Active" value={activeOrders.length} sub="in progress" color="#f59e0b" />
+        <StatCard label="Total Orders" value={orders.length} color="var(--color-foreground)" />
+        <StatCard
+          label="Active"
+          value={activeOrders.length}
+          sub="in progress"
+          color="var(--color-warning)"
+        />
         <StatCard
           label="Revenue"
           value={`PKR ${revenue.toLocaleString()}`}
           sub="delivered only"
-          color="#16a34a"
+          color="var(--color-success)"
         />
       </div>
 
@@ -133,16 +204,28 @@ export function OrdersBoard({
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabFilter)}>
         <TabsList className="h-10 rounded-xl p-1">
           <TabsTrigger value="all" className="rounded-lg px-4 text-sm">
-            All <span className="ml-1.5 rounded-full bg-(--color-muted) px-1.5 py-0.5 text-xs font-semibold">{orders.length}</span>
+            All{" "}
+            <span className="ml-1.5 rounded-full bg-(--color-muted) px-1.5 py-0.5 text-xs font-semibold">
+              {orders.length}
+            </span>
           </TabsTrigger>
           <TabsTrigger value="active" className="rounded-lg px-4 text-sm">
-            Active <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700">{activeOrders.length}</span>
+            Active{" "}
+            <span className="ml-1.5 rounded-full bg-warning/15 px-1.5 py-0.5 text-xs font-semibold text-warning">
+              {activeOrders.length}
+            </span>
           </TabsTrigger>
           <TabsTrigger value="delivered" className="rounded-lg px-4 text-sm">
-            Delivered <span className="ml-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-700">{orders.filter((o) => o.status === "delivered").length}</span>
+            Delivered{" "}
+            <span className="ml-1.5 rounded-full bg-success/15 px-1.5 py-0.5 text-xs font-semibold text-success">
+              {orders.filter((o) => o.status === "delivered").length}
+            </span>
           </TabsTrigger>
           <TabsTrigger value="cancelled" className="rounded-lg px-4 text-sm">
-            Cancelled <span className="ml-1.5 rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-600">{orders.filter((o) => o.status === "cancelled").length}</span>
+            Cancelled{" "}
+            <span className="ml-1.5 rounded-full bg-destructive/15 px-1.5 py-0.5 text-xs font-semibold text-destructive">
+              {orders.filter((o) => o.status === "cancelled").length}
+            </span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -168,7 +251,10 @@ export function OrdersBoard({
                   className={`group relative overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-card) shadow-sm transition-shadow hover:shadow-md ${statusCfg.cardBg}`}
                 >
                   {/* Left accent bar */}
-                  <div className="absolute inset-y-0 left-0 w-1 rounded-l-2xl" style={{ backgroundColor: statusCfg.hex }} />
+                  <div
+                    className="absolute inset-y-0 left-0 w-1 rounded-l-2xl"
+                    style={{ backgroundColor: statusCfg.hex }}
+                  />
 
                   <div className="pl-4">
                     {/* Top row */}
@@ -210,34 +296,33 @@ export function OrdersBoard({
                     {/* Address */}
                     <div className="mt-3 flex items-start gap-1.5 px-4">
                       <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--color-muted-foreground)" />
-                      <p className="text-sm text-(--color-foreground) line-clamp-1">{order.address}</p>
+                      <p className="text-sm text-(--color-foreground) line-clamp-1">
+                        {order.address}
+                      </p>
                     </div>
 
                     {/* Actions row */}
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 bg-card/60 px-4 py-3">
-                      <Select
-                        value={order.rider_id ?? ""}
-                        onValueChange={(v) => assignRider(order.id, v)}
+                      {/* Rider assign button */}
+                      <button
                         disabled={
                           order.status === "cancelled" ||
                           order.status === "delivered" ||
-                          mutating === `rider:${order.id}`
+                          isMutating(`rider:${order.id}`)
                         }
+                        onClick={() => setRiderDialogOrderId(order.id)}
+                        className="flex h-8 items-center gap-1.5 rounded-lg border border-(--color-border) bg-(--color-background) px-3 text-sm text-(--color-foreground) transition-colors hover:bg-(--color-muted) disabled:pointer-events-none disabled:opacity-50"
                       >
-                        <SelectTrigger className="h-8 w-44 rounded-lg border-(--color-border) bg-(--color-background) text-sm">
-                          <div className="flex items-center gap-1.5">
-                            <User className="h-3.5 w-3.5 text-(--color-muted-foreground)" />
-                            <SelectValue placeholder="Assign rider…" />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {riders.map((r) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.full_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {assignedRider ? (
+                          <UserCheck className="h-3.5 w-3.5 text-success" />
+                        ) : (
+                          <User className="h-3.5 w-3.5 text-(--color-muted-foreground)" />
+                        )}
+                        <span className="max-w-32 truncate">
+                          {assignedRider ? assignedRider.full_name : "Assign rider"}
+                        </span>
+                        {/* <ChevronDown className="h-3 w-3 text-(--color-muted-foreground)" /> */}
+                      </button>
 
                       <div className="flex items-center gap-1.5 ml-auto">
                         {nextStatuses.map((status) => {
@@ -248,11 +333,11 @@ export function OrdersBoard({
                               size="sm"
                               variant={status === "cancelled" ? "destructive" : "default"}
                               className="h-8 gap-1.5 rounded-lg text-xs font-semibold"
-                              disabled={mutating === key}
+                              disabled={isMutating(key)}
                               onClick={() => advanceStatus(order.id, status)}
                             >
                               {status !== "cancelled" && <Zap className="h-3 w-3" />}
-                              {mutating === key ? "Saving…" : ORDER_STATUS_LABELS[status]}
+                              {isMutating(key) ? "Saving…" : ORDER_STATUS_LABELS[status]}
                             </Button>
                           );
                         })}
@@ -265,6 +350,91 @@ export function OrdersBoard({
           </div>
         )}
       </ScrollArea>
+
+      {/* Rider picker dialog */}
+      {(() => {
+        const dialogOrder = riderDialogOrderId
+          ? orders.find((o) => o.id === riderDialogOrderId)
+          : null;
+        return (
+          <Dialog
+            open={!!riderDialogOrderId}
+            onOpenChange={(open) => !open && setRiderDialogOrderId(null)}
+          >
+            <DialogContent className="max-w-3xl rounded-2xl p-0 overflow-hidden">
+              <DialogHeader className="px-5 pt-5 pb-3 border-b border-(--color-border)">
+                <DialogTitle className="text-base">Assign rider</DialogTitle>
+                {dialogOrder && (
+                  <DialogDescription className="text-xs">
+                    Order #{dialogOrder.id.slice(0, 8).toUpperCase()} · PKR{" "}
+                    {dialogOrder.total.toLocaleString()}
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              <div className="flex flex-col gap-1.5 p-3 max-h-80 min-h-32 overflow-y-auto">
+                {riders.length === 0 && (
+                  <p className="py-6 text-center text-sm text-(--color-muted-foreground)">
+                    No riders available.
+                  </p>
+                )}
+                {riders.map((rider) => {
+                  const isAssigned = dialogOrder?.rider_id === rider.id;
+                  const initials = rider.full_name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join("")
+                    .toUpperCase();
+                  return (
+                    <button
+                      key={rider.id}
+                      onClick={() =>
+                        riderDialogOrderId && assignRider(riderDialogOrderId, rider.id)
+                      }
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                        isAssigned
+                          ? "bg-success/10 border border-success/30"
+                          : "hover:bg-(--color-muted) border border-transparent"
+                      }`}
+                    >
+                      {/* Avatar */}
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                          isAssigned
+                            ? "bg-success text-(--color-success-foreground)"
+                            : "bg-(--color-muted) text-(--color-foreground)"
+                        }`}
+                      >
+                        {initials}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`font-medium text-sm ${isAssigned ? "text-success" : "text-(--color-foreground)"}`}
+                        >
+                          {rider.full_name}
+                        </p>
+                        {rider.phone && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Phone className="h-3 w-3 text-(--color-muted-foreground)" />
+                            <span className="text-xs text-(--color-muted-foreground)">
+                              {rider.phone}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {isAssigned && <Check className="h-4 w-4 shrink-0 text-success" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

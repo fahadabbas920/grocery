@@ -20,8 +20,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   let order;
   try {
     order = await getOrderWithItems(supabase, id);
-  } catch {
-    notFound();
+  } catch (e) {
+    // PostgREST returns PGRST116 when `.single()` matches no row → genuine 404.
+    // Any other error (network, RLS, 5xx) is transient — let the error boundary show.
+    if ((e as { code?: string })?.code === "PGRST116") notFound();
+    throw e;
   }
 
   const mapsEnabled = await isMapsEnabled(supabase);

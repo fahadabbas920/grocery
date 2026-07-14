@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button, Input } from "@grocery/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,15 +16,14 @@ export function LoginForm() {
     setError(null);
 
     const supabase = getBrowserSupabase();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setError(error.message);
+    if (signInError) {
+      setError(signInError.message);
       setLoading(false);
       return;
     }
-    router.replace("/");
-    router.refresh();
+    window.location.replace("/");
   }
 
   return (
@@ -34,6 +31,7 @@ export function LoginForm() {
       <Input
         type="email"
         placeholder="Email"
+        aria-label="Email address"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
@@ -41,11 +39,16 @@ export function LoginForm() {
       <Input
         type="password"
         placeholder="Password"
+        aria-label="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      {error && <p className="text-sm text-[var(--color-destructive)]">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-(--color-destructive)">
+          {error}
+        </p>
+      )}
       <Button type="submit" disabled={loading}>
         {loading ? "Signing in…" : "Sign in"}
       </Button>

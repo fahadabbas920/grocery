@@ -5,10 +5,7 @@ import { OrdersBoard } from "@/components/orders-board";
 
 export default async function OrdersPage() {
   const supabase = await getServerSupabase();
-  const [orders, riders] = await Promise.all([
-    getOrdersByStatus(supabase),
-    getRiders(supabase),
-  ]);
+  const [orders, riders] = await Promise.all([getOrdersByStatus(supabase), getRiders(supabase)]);
 
   return (
     <div>

@@ -4,14 +4,16 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left panel — brand (desktop only) */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gap-6 bg-linear-to-br from-[oklch(0.62_0.19_145)] to-[oklch(0.48_0.19_145)] p-12 text-white">
+      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gap-6 bg-linear-to-br from-primary to-primary/70 p-12 text-(--color-primary-foreground)">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-3xl font-black text-white">
           G
         </div>
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">Grocery Ops</h1>
           <p className="mt-2 text-white/70 text-sm">
-            Manage orders, catalog and riders<br />all from one place.
+            Manage orders, catalog and riders
+            <br />
+            all from one place.
           </p>
         </div>
         <div className="mt-8 grid grid-cols-2 gap-3 text-center text-xs text-white/60">

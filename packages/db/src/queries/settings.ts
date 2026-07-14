@@ -19,7 +19,10 @@ export async function getAppSetting<T = unknown>(supabase: DB, key: string): Pro
 export async function setAppSetting(supabase: DB, key: string, value: unknown) {
   const { error } = await supabase
     .from("app_settings")
-    .upsert({ key, value: value as Database["public"]["Tables"]["app_settings"]["Insert"]["value"] });
+    .upsert({
+      key,
+      value: value as Database["public"]["Tables"]["app_settings"]["Insert"]["value"],
+    });
   if (error) throw error;
 }
 

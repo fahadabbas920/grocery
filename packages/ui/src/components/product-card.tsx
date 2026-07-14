@@ -60,35 +60,35 @@ export function ProductCard({
           <p className="text-sm font-semibold text-(--color-primary)">
             {currency} {price.toLocaleString()}
           </p>
-          {!outOfStock && onAdd && (
-            quantity > 0 ? (
-              <div
-                className="flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-              >
+          {!outOfStock &&
+            onAdd &&
+            (quantity > 0 ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={onDecrement}
-                  className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-primary) text-white text-sm font-bold leading-none"
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-primary) text-(--color-primary-foreground) text-sm font-bold leading-none"
                 >
                   −
                 </button>
                 <span className="w-5 text-center text-sm font-semibold">{quantity}</span>
                 <button
                   onClick={onIncrement}
-                  className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-primary) text-white text-sm font-bold leading-none"
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-primary) text-(--color-primary-foreground) text-sm font-bold leading-none"
                 >
                   +
                 </button>
               </div>
             ) : (
               <button
-                onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                className="flex h-7 items-center gap-1 rounded-lg bg-(--color-primary) px-2.5 text-xs font-semibold text-white transition-colors hover:bg-(--color-primary)/90"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAdd();
+                }}
+                className="flex h-7 items-center gap-1 rounded-lg bg-(--color-primary) px-2.5 text-xs font-semibold text-(--color-primary-foreground) transition-colors hover:opacity-90"
               >
                 + Add
               </button>
-            )
-          )}
+            ))}
         </div>
       </CardContent>
     </Card>

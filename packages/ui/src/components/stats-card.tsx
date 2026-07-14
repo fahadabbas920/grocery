@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "../lib/utils";
 
 interface Trend {
   value: number;
@@ -17,7 +18,12 @@ export function StatsCard({ label, value, icon, trend, className }: StatsCardPro
   const trendPositive = trend && trend.value >= 0;
 
   return (
-    <div className={`rounded-xl border border-(--color-border) bg-(--color-card) p-5 shadow-sm ${className ?? ""}`}>
+    <div
+      className={cn(
+        "rounded-xl border border-(--color-border) bg-(--color-card) p-5 shadow-sm",
+        className,
+      )}
+    >
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-medium text-(--color-muted-foreground)">{label}</p>
         {icon && (
@@ -28,8 +34,11 @@ export function StatsCard({ label, value, icon, trend, className }: StatsCardPro
       </div>
       <p className="text-2xl font-bold text-(--color-foreground)">{value}</p>
       {trend && (
-        <p className={`mt-1 text-xs font-medium ${trendPositive ? "text-(--color-success)" : "text-(--color-destructive)"}`}>
-          {trendPositive ? "+" : ""}{trend.value} {trend.label}
+        <p
+          className={`mt-1 text-xs font-medium ${trendPositive ? "text-(--color-success)" : "text-(--color-destructive)"}`}
+        >
+          {trendPositive ? "+" : ""}
+          {trend.value} {trend.label}
         </p>
       )}
     </div>

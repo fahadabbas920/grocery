@@ -28,8 +28,12 @@
     "next": "*"
   },
   "peerDependenciesMeta": {
-    "next": { "optional": true },
-    "@react-native-async-storage/async-storage": { "optional": true }
+    "next": {
+      "optional": true
+    },
+    "@react-native-async-storage/async-storage": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@grocery/config": "workspace:*",

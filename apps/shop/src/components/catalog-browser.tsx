@@ -49,11 +49,19 @@ function matchesPriceRange(price: number, range: PriceRange) {
 }
 
 function FilterPanelContents({
-  priceRange, setPriceRange, inStockOnly, setInStockOnly, sortBy, setSortBy,
+  priceRange,
+  setPriceRange,
+  inStockOnly,
+  setInStockOnly,
+  sortBy,
+  setSortBy,
 }: {
-  priceRange: PriceRange; setPriceRange: (v: PriceRange) => void;
-  inStockOnly: boolean; setInStockOnly: (v: boolean) => void;
-  sortBy: SortOption; setSortBy: (v: SortOption) => void;
+  priceRange: PriceRange;
+  setPriceRange: (v: PriceRange) => void;
+  inStockOnly: boolean;
+  setInStockOnly: (v: boolean) => void;
+  sortBy: SortOption;
+  setSortBy: (v: SortOption) => void;
 }) {
   return (
     <>
@@ -69,10 +77,16 @@ function FilterPanelContents({
               onClick={() => setPriceRange(r.value)}
               className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-(--color-muted)"
             >
-              <span className={priceRange === r.value ? "font-medium text-green-600" : "text-(--color-foreground)"}>
+              <span
+                className={
+                  priceRange === r.value
+                    ? "font-medium text-(--color-primary)"
+                    : "text-(--color-foreground)"
+                }
+              >
                 {r.label}
               </span>
-              {priceRange === r.value && <Check className="h-3.5 w-3.5 text-green-600" />}
+              {priceRange === r.value && <Check className="h-3.5 w-3.5 text-(--color-primary)" />}
             </button>
           ))}
         </div>
@@ -84,14 +98,25 @@ function FilterPanelContents({
           Availability
         </p>
         <button
+          role="switch"
+          aria-checked={inStockOnly}
+          aria-label="In stock only"
           onClick={() => setInStockOnly(!inStockOnly)}
           className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-(--color-muted)"
         >
-          <span className={inStockOnly ? "font-medium text-green-600" : "text-(--color-foreground)"}>
+          <span
+            className={
+              inStockOnly ? "font-medium text-(--color-primary)" : "text-(--color-foreground)"
+            }
+          >
             In stock only
           </span>
-          <div className={`h-5 w-9 rounded-full transition-colors ${inStockOnly ? "bg-green-600" : "bg-(--color-muted)"}`}>
-            <div className={`mt-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${inStockOnly ? "translate-x-4.5" : "translate-x-0.5"}`} />
+          <div
+            className={`h-5 w-9 rounded-full transition-colors ${inStockOnly ? "bg-(--color-primary)" : "bg-(--color-muted)"}`}
+          >
+            <div
+              className={`mt-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${inStockOnly ? "translate-x-4.5" : "translate-x-0.5"}`}
+            />
           </div>
         </button>
       </div>
@@ -110,10 +135,16 @@ function FilterPanelContents({
               onClick={() => setSortBy(s.value)}
               className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-(--color-muted)"
             >
-              <span className={sortBy === s.value ? "font-medium text-green-600" : "text-(--color-foreground)"}>
+              <span
+                className={
+                  sortBy === s.value
+                    ? "font-medium text-(--color-primary)"
+                    : "text-(--color-foreground)"
+                }
+              >
                 {s.label}
               </span>
-              {sortBy === s.value && <Check className="h-3.5 w-3.5 text-green-600" />}
+              {sortBy === s.value && <Check className="h-3.5 w-3.5 text-(--color-primary)" />}
             </button>
           ))}
         </div>
@@ -142,7 +173,9 @@ export function CatalogBrowser({
   const activeFilterCount =
     (priceRange !== "all" ? 1 : 0) + (inStockOnly ? 1 : 0) + (sortBy !== "default" ? 1 : 0);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -171,7 +204,8 @@ export function CatalogBrowser({
 
     if (sortBy === "price_asc") result = [...result].sort((a, b) => a.price - b.price);
     else if (sortBy === "price_desc") result = [...result].sort((a, b) => b.price - a.price);
-    else if (sortBy === "name_asc") result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortBy === "name_asc")
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
   }, [items, query, activeCategory, priceRange, inStockOnly, sortBy]);
@@ -183,17 +217,17 @@ export function CatalogBrowser({
   return (
     <div>
       {/* Hero banner — full width, image on right fades into gradient */}
-      <div className="relative mb-6 overflow-hidden rounded-2xl bg-linear-to-r from-green-600 via-emerald-500 to-emerald-400 px-6 py-10">
+      <div className="relative mb-6 overflow-hidden rounded-2xl bg-linear-to-r from-primary to-primary/80 px-6 py-10">
         <div className="relative z-10 max-w-xs">
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-100">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary-foreground/80">
             Fresh &amp; Local
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">
+          <h1 className="mt-1 text-2xl font-bold text-(--color-primary-foreground) sm:text-3xl">
             Groceries delivered
             <br />
             in 30 minutes
           </h1>
-          <p className="mt-2 text-sm text-green-100">
+          <p className="mt-2 text-sm text-primary-foreground/80">
             Over {items.length} products available right now
           </p>
         </div>
@@ -232,7 +266,7 @@ export function CatalogBrowser({
               <SlidersHorizontal className="h-3.5 w-3.5" />
               <span>Filter</span>
               {activeFilterCount > 0 && (
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-600 text-[10px] font-bold text-white">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-(--color-primary) text-[10px] font-bold text-(--color-primary-foreground)">
                   {activeFilterCount}
                 </span>
               )}
@@ -240,38 +274,45 @@ export function CatalogBrowser({
           </div>
 
           {/* Mobile full-screen filter sheet */}
-          {mounted && createPortal(
-            <div
-              className={`fixed inset-0 z-50 flex flex-col bg-(--color-background) transition-transform duration-300 ease-in-out sm:hidden ${
-                filterOpen ? "translate-y-0" : "translate-y-full"
-              }`}
-            >
-              <div className="flex items-center justify-between border-b border-(--color-border) px-4 py-4">
-                <span className="text-base font-semibold text-(--color-foreground)">Filters</span>
-                <div className="flex items-center gap-3">
-                  {activeFilterCount > 0 && (
-                    <button onClick={clearFilters} className="text-sm text-green-600 hover:underline">
-                      Clear all
+          {mounted &&
+            createPortal(
+              <div
+                className={`fixed inset-0 z-50 flex flex-col bg-(--color-background) transition-transform duration-300 ease-in-out sm:hidden ${
+                  filterOpen ? "translate-y-0" : "translate-y-full"
+                }`}
+              >
+                <div className="flex items-center justify-between border-b border-(--color-border) px-4 py-4">
+                  <span className="text-base font-semibold text-(--color-foreground)">Filters</span>
+                  <div className="flex items-center gap-3">
+                    {activeFilterCount > 0 && (
+                      <button
+                        onClick={clearFilters}
+                        className="text-sm text-(--color-primary) hover:underline"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setFilterOpen(false)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-(--color-muted)"
+                    >
+                      <X className="h-5 w-5 text-(--color-muted-foreground)" />
                     </button>
-                  )}
-                  <button
-                    onClick={() => setFilterOpen(false)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-(--color-muted)"
-                  >
-                    <X className="h-5 w-5 text-(--color-muted-foreground)" />
-                  </button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 overflow-y-auto px-4 py-4">
-                <FilterPanelContents
-                  priceRange={priceRange} setPriceRange={setPriceRange}
-                  inStockOnly={inStockOnly} setInStockOnly={setInStockOnly}
-                  sortBy={sortBy} setSortBy={setSortBy}
-                />
-              </div>
-            </div>,
-            document.body
-          )}
+                <div className="flex-1 overflow-y-auto px-4 py-4">
+                  <FilterPanelContents
+                    priceRange={priceRange}
+                    setPriceRange={setPriceRange}
+                    inStockOnly={inStockOnly}
+                    setInStockOnly={setInStockOnly}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                  />
+                </div>
+              </div>,
+              document.body,
+            )}
         </div>
 
         {/* Category chips + filter row — sm and up */}
@@ -313,7 +354,7 @@ export function CatalogBrowser({
               <SlidersHorizontal className="h-3.5 w-3.5" />
               <span>Filter</span>
               {activeFilterCount > 0 && (
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-600 text-[10px] font-bold text-white">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-(--color-primary) text-[10px] font-bold text-(--color-primary-foreground)">
                   {activeFilterCount}
                 </span>
               )}
@@ -327,32 +368,35 @@ export function CatalogBrowser({
                   : "opacity-0 scale-95 pointer-events-none"
               }`}
             >
-                {/* Header */}
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="font-semibold text-(--color-foreground)">Filters</span>
-                  <div className="flex items-center gap-2">
-                    {activeFilterCount > 0 && (
-                      <button
-                        onClick={clearFilters}
-                        className="text-xs text-green-600 hover:underline"
-                      >
-                        Clear all
-                      </button>
-                    )}
+              {/* Header */}
+              <div className="mb-3 flex items-center justify-between">
+                <span className="font-semibold text-(--color-foreground)">Filters</span>
+                <div className="flex items-center gap-2">
+                  {activeFilterCount > 0 && (
                     <button
-                      onClick={() => setFilterOpen(false)}
-                      className="rounded-full p-0.5 hover:bg-(--color-muted)"
+                      onClick={clearFilters}
+                      className="text-xs text-(--color-primary) hover:underline"
                     >
-                      <X className="h-4 w-4 text-(--color-muted-foreground)" />
+                      Clear all
                     </button>
-                  </div>
+                  )}
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    className="rounded-full p-0.5 hover:bg-(--color-muted)"
+                  >
+                    <X className="h-4 w-4 text-(--color-muted-foreground)" />
+                  </button>
                 </div>
+              </div>
 
-                <FilterPanelContents
-                  priceRange={priceRange} setPriceRange={setPriceRange}
-                  inStockOnly={inStockOnly} setInStockOnly={setInStockOnly}
-                  sortBy={sortBy} setSortBy={setSortBy}
-                />
+              <FilterPanelContents
+                priceRange={priceRange}
+                setPriceRange={setPriceRange}
+                inStockOnly={inStockOnly}
+                setInStockOnly={setInStockOnly}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+              />
             </div>
           </div>
         </div>

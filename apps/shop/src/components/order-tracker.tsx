@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ORDER_STATUS_FLOW, ORDER_STATUS_LABELS, REALTIME, type OrderStatus } from "@grocery/shared";
+import { useEffect, useRef, useState } from "react";
+import type mapboxgl from "mapbox-gl";
+import {
+  BRAND_GREEN_HEX,
+  ORDER_STATUS_FLOW,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_SUBTITLES,
+  REALTIME,
+  formatOrderCode,
+  type OrderStatus,
+} from "@grocery/shared";
 import { ORDER_STATUS_CONFIG } from "@grocery/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -12,17 +21,68 @@ interface RiderPos {
   lng: number;
 }
 
-const STATUS_SUBTITLES: Record<OrderStatus, string> = {
-  placed:     "We've received your order and will start preparing it shortly.",
-  preparing:  "Your order is being carefully prepared.",
-  on_the_way: "Your order is out for delivery. Hang tight!",
-  delivered:  "Your order has been delivered successfully.",
-  cancelled:  "This order was cancelled.",
-};
+/**
+ * RiderMap — shows the live rider location. Provider priority:
+ *   1. Mapbox  (NEXT_PUBLIC_MAPBOX_TOKEN)
+ *   2. Google  (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY iframe)
+ */
+function RiderMap({ pos }: { pos: RiderPos }) {
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const googleKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-function formatOrderCode(id: string) {
-  const upper = id.replace(/-/g, "").toUpperCase().slice(0, 8);
-  return `${upper.slice(0, 4)}-${upper.slice(4)}`;
+  if (mapboxToken) {
+    return <MapboxRiderMap token={mapboxToken} pos={pos} />;
+  }
+  if (googleKey) {
+    return (
+      <iframe
+        title="Rider location"
+        className="h-64 w-full"
+        loading="lazy"
+        src={`https://www.google.com/maps/embed/v1/view?key=${googleKey}&center=${pos.lat},${pos.lng}&zoom=15`}
+      />
+    );
+  }
+  return null;
+}
+
+function MapboxRiderMap({ token, pos }: { token: string; pos: RiderPos }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    import("mapbox-gl").then((mapboxgl) => {
+      import("mapbox-gl/dist/mapbox-gl.css");
+      mapboxgl.default.accessToken = token;
+
+      if (!mapRef.current && containerRef.current) {
+        mapRef.current = new mapboxgl.default.Map({
+          container: containerRef.current,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: [pos.lng, pos.lat],
+          zoom: 15,
+        });
+        markerRef.current = new mapboxgl.default.Marker({ color: BRAND_GREEN_HEX })
+          .setLngLat([pos.lng, pos.lat])
+          .addTo(mapRef.current);
+      }
+    });
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // Update marker position when rider moves
+  useEffect(() => {
+    markerRef.current?.setLngLat([pos.lng, pos.lat]);
+    mapRef.current?.easeTo({ center: [pos.lng, pos.lat], duration: 800 });
+  }, [pos.lat, pos.lng]);
+
+  return <div ref={containerRef} className="h-64 w-full" />;
 }
 
 function HorizontalStepper({ status }: { status: OrderStatus }) {
@@ -44,25 +104,30 @@ function HorizontalStepper({ status }: { status: OrderStatus }) {
             width: isCancelled
               ? "0%"
               : status === "delivered"
-              ? "100%"
-              : currentIndex <= 0
-              ? "0%"
-              : `${(currentIndex / (steps.length - 1)) * 100}%`,
+                ? "100%"
+                : currentIndex <= 0
+                  ? "0%"
+                  : `${(currentIndex / (steps.length - 1)) * 100}%`,
           }}
         />
 
         {steps.map((step, i) => {
-          const completed = !isCancelled && (i < currentIndex || (status === "delivered" && i === currentIndex));
+          const completed =
+            !isCancelled && (i < currentIndex || (status === "delivered" && i === currentIndex));
           const active = !isCancelled && i === currentIndex && status !== "delivered";
           return (
-            <div key={step} className="relative z-10 flex flex-col items-center gap-2" style={{ width: `${100 / steps.length}%` }}>
+            <div
+              key={step}
+              className="relative z-10 flex flex-col items-center gap-2"
+              style={{ width: `${100 / steps.length}%` }}
+            >
               <span
                 className={`flex h-7 w-7 items-center justify-center rounded-full border-2 transition-all duration-300 ${
                   completed
                     ? "border-(--color-primary) bg-(--color-primary)"
                     : active
-                    ? "border-(--color-primary) bg-white"
-                    : "border-(--color-border) bg-(--color-background)"
+                      ? "border-(--color-primary) bg-white"
+                      : "border-(--color-border) bg-(--color-background)"
                 }`}
               >
                 {completed ? (
@@ -75,7 +140,9 @@ function HorizontalStepper({ status }: { status: OrderStatus }) {
               </span>
               <p
                 className={`text-center text-[10px] font-medium leading-tight ${
-                  completed || active ? "text-(--color-foreground)" : "text-(--color-muted-foreground)"
+                  completed || active
+                    ? "text-(--color-foreground)"
+                    : "text-(--color-muted-foreground)"
                 }`}
               >
                 {ORDER_STATUS_LABELS[step]}
@@ -105,8 +172,10 @@ export function OrderTracker({
 }) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   const [riderPos, setRiderPos] = useState<RiderPos | null>(null);
-  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const mapsAvailable = mapsEnabled && Boolean(mapsKey);
+  const mapsAvailable =
+    mapsEnabled &&
+    (Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN) ||
+      Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY));
 
   const cfg = ORDER_STATUS_CONFIG[status];
   const StatusIcon = cfg.icon;
@@ -122,7 +191,9 @@ export function OrderTracker({
         (payload) => setStatus((payload.new as { status: OrderStatus }).status),
       )
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [orderId]);
 
   useEffect(() => {
@@ -132,21 +203,32 @@ export function OrderTracker({
       .channel(`${REALTIME.riderLocationsChannel}:${riderId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rider_locations", filter: `rider_id=eq.${riderId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "rider_locations",
+          filter: `rider_id=eq.${riderId}`,
+        },
         (payload) => {
           const row = payload.new as RiderPos;
           setRiderPos({ lat: row.lat, lng: row.lng });
         },
       )
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [riderId]);
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-10">
       {/* Hero status card */}
-      <div className={`overflow-hidden rounded-2xl bg-linear-to-br ${cfg.gradient} p-6 text-center`}>
-        <div className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20`}>
+      <div
+        className={`overflow-hidden rounded-2xl bg-linear-to-br ${cfg.gradient} p-6 text-center`}
+      >
+        <div
+          className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20`}
+        >
           <StatusIcon className="h-8 w-8 text-white" />
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
@@ -155,7 +237,7 @@ export function OrderTracker({
         <p className="mt-1 text-2xl font-extrabold uppercase tracking-wide text-white">
           {ORDER_STATUS_LABELS[status]}
         </p>
-        <p className="mt-1 text-sm text-white/80">{STATUS_SUBTITLES[status]}</p>
+        <p className="mt-1 text-sm text-white/80">{ORDER_STATUS_SUBTITLES[status]}</p>
 
         {/* Order code chip */}
         <div className="mx-auto mt-4 inline-block rounded-xl bg-white/20 px-5 py-3 backdrop-blur-sm">
@@ -165,11 +247,7 @@ export function OrderTracker({
           </p>
         </div>
 
-        {isActive && (
-          <p className="mt-3 text-xs text-white/60">
-            Estimated delivery · ~25 min
-          </p>
-        )}
+        {isActive && <p className="mt-3 text-xs text-white/60">Estimated delivery · ~25 min</p>}
       </div>
 
       {/* Horizontal progress stepper */}
@@ -184,7 +262,7 @@ export function OrderTracker({
         </div>
         <div className="divide-y divide-(--color-border)">
           <div className="flex items-center gap-3 px-5 py-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--color-primary)/10 text-(--color-primary)">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-(--color-primary)">
               <Banknote className="h-4 w-4" />
             </span>
             <div>
@@ -195,7 +273,7 @@ export function OrderTracker({
             </div>
           </div>
           <div className="flex items-start gap-3 px-5 py-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--color-primary)/10 text-(--color-primary)">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-(--color-primary)">
               <MapPin className="h-4 w-4" />
             </span>
             <div>
@@ -214,12 +292,7 @@ export function OrderTracker({
               Live rider location
             </p>
           </div>
-          <iframe
-            title="Rider location"
-            className="h-64 w-full"
-            loading="lazy"
-            src={`https://www.google.com/maps/embed/v1/view?key=${mapsKey}&center=${riderPos.lat},${riderPos.lng}&zoom=15`}
-          />
+          <RiderMap pos={riderPos} />
         </div>
       )}
       {status === "on_the_way" && !mapsAvailable && (

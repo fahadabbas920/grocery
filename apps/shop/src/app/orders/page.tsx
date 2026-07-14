@@ -3,13 +3,8 @@ import { redirect } from "next/navigation";
 import { EmptyState, ORDER_STATUS_CONFIG } from "@grocery/ui";
 import { getMyOrders } from "@grocery/db/queries";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@grocery/shared";
+import { ORDER_STATUS_LABELS, formatOrderCode, type OrderStatus } from "@grocery/shared";
 import { ClipboardList, MapPin, ChevronRight, ShoppingBag } from "lucide-react";
-
-function formatOrderCode(id: string) {
-  const upper = id.replace(/-/g, "").toUpperCase().slice(0, 8);
-  return `${upper.slice(0, 4)}-${upper.slice(4)}`;
-}
 
 export default async function OrdersPage() {
   const supabase = await getServerSupabase();
@@ -56,14 +51,17 @@ export default async function OrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((order) => {
-            const cfg = ORDER_STATUS_CONFIG[order.status as OrderStatus] ?? ORDER_STATUS_CONFIG.placed;
+            const cfg =
+              ORDER_STATUS_CONFIG[order.status as OrderStatus] ?? ORDER_STATUS_CONFIG.placed;
             const StatusIcon = cfg.icon;
             const isActive = !["delivered", "cancelled"].includes(order.status);
             return (
               <Link key={order.id} href={`/orders/${order.id}`} className="inline-block w-full">
                 <div className="group flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-background) p-4 transition-all hover:border-primary/30 hover:shadow-md">
                   {/* Status icon */}
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${cfg.iconBg}`}>
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${cfg.iconBg}`}
+                  >
                     <StatusIcon className="h-5 w-5" />
                   </div>
 

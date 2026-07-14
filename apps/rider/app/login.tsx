@@ -1,21 +1,14 @@
 import { useState } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
+import { Button, TextField } from "@/components";
+import { colors, fontSize, radius, shadow, spacing } from "@/theme";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function signIn() {
@@ -24,128 +17,93 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setLoading(false);
-    if (error) Alert.alert("Sign in failed", error.message);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) Alert.alert("Sign in failed", error.message);
+    } catch (e) {
+      Alert.alert("Sign in failed", e instanceof Error ? e.message : "Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.container}>
-        <View style={styles.logoWrap}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="bicycle" size={40} color="#fff" />
-          </View>
-          <Text style={styles.appName}>Grocery Rider</Text>
-          <Text style={styles.tagline}>Deliver with confidence</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sign in</Text>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.inputWrap}>
-              <Ionicons name="mail-outline" size={16} color="#9ca3af" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="rider@example.com"
-                placeholderTextColor="#9ca3af"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
+    <SafeAreaView style={styles.screen}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.container}>
+          <View style={styles.logoWrap}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="bicycle" size={40} color={colors.white} />
             </View>
+            <Text style={styles.appName}>Grocery Rider</Text>
+            <Text style={styles.tagline}>Deliver with confidence</Text>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={16} color="#9ca3af" style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, styles.inputPassword]}
-                placeholder="••••••••"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                onSubmitEditing={signIn}
-              />
-              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Sign in</Text>
 
-          <TouchableOpacity
-            style={[styles.signInBtn, loading && styles.signInBtnDisabled]}
-            onPress={signIn}
-            disabled={loading}
-          >
-            <Text style={styles.signInBtnText}>{loading ? "Signing in…" : "Sign in"}</Text>
-          </TouchableOpacity>
+            <TextField
+              label="Email"
+              icon="mail-outline"
+              placeholder="rider@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+
+            <TextField
+              label="Password"
+              icon="lock-closed-outline"
+              placeholder="••••••••"
+              secure
+              value={password}
+              onChangeText={setPassword}
+              onSubmitEditing={signIn}
+            />
+
+            <Button
+              label={loading ? "Signing in…" : "Sign in"}
+              onPress={signIn}
+              loading={loading}
+              style={styles.signInBtn}
+            />
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f0fdf4" },
-  container: { flex: 1, justifyContent: "center", padding: 24, gap: 24 },
-  logoWrap: { alignItems: "center", gap: 8 },
+  screen: { flex: 1, backgroundColor: colors.brandBg },
+  flex: { flex: 1 },
+  container: { flex: 1, justifyContent: "center", padding: spacing.xxl, gap: spacing.xxl },
+  logoWrap: { alignItems: "center", gap: spacing.sm },
   logoCircle: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: "#16a34a",
+    borderRadius: radius.full,
+    backgroundColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#16a34a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...shadow.brand,
   },
-  appName: { fontSize: 26, fontWeight: "800", color: "#14532d" },
-  tagline: { fontSize: 14, color: "#4ade80" },
+  appName: { fontSize: fontSize.hero, fontWeight: "800", color: colors.brandTextDeep },
+  tagline: { fontSize: fontSize.base, color: colors.brandLight },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    gap: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: colors.white,
+    borderRadius: radius.xxl,
+    padding: spacing.xxl,
+    gap: spacing.lg,
+    ...shadow.lg,
   },
-  cardTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
-  field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: "600", color: "#374151" },
-  inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    backgroundColor: "#f9fafb",
-  },
-  inputIcon: { paddingLeft: 12 },
-  input: { flex: 1, padding: 12, fontSize: 15, color: "#111827" },
-  inputPassword: { paddingRight: 44 },
-  eyeBtn: { position: "absolute", right: 12, padding: 4 },
-  signInBtn: {
-    backgroundColor: "#16a34a",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  signInBtnDisabled: { backgroundColor: "#86efac" },
-  signInBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  cardTitle: { fontSize: fontSize.title, fontWeight: "700", color: colors.text },
+  signInBtn: { marginTop: spacing.xs },
 });

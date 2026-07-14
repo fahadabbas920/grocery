@@ -7,12 +7,7 @@
   // rider app happen on EAS, not locally.)
   "java.import.gradle.enabled": false,
   "java.import.maven.enabled": false,
-  "java.import.exclusions": [
-    "**/node_modules/**",
-    "**/.expo/**",
-    "**/android/**",
-    "**/ios/**"
-  ],
+  "java.import.exclusions": ["**/node_modules/**", "**/.expo/**", "**/android/**", "**/ios/**"],
   "gradle.nestedProjects": false,
 
   // Keep the file watcher off generated/dependency dirs (perf + fewer false scans).

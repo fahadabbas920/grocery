@@ -7,13 +7,14 @@ import { useCart } from "@/lib/cart/cart-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { placeOrder } from "@/app/cart/actions";
 import { Minus, Package, Plus, ShoppingBag, Trash2, MapPin, Banknote } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { LocationPicker, type PickedLocation } from "./location-picker";
+import { Separator } from "@grocery/ui/components/separator";
 import { toast } from "sonner";
 
 export function CartView() {
   const router = useRouter();
   const { lines, setQuantity, total, count, clear } = useCart();
-  const [address, setAddress] = useState("");
+  const [location, setLocation] = useState<PickedLocation>({ lat: 0, lng: 0, address: "" });
   const [error, setError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
 
@@ -31,19 +32,11 @@ export function CartView() {
         return;
       }
 
-      const coords = await new Promise<{ lat: number; lng: number }>((resolve) => {
-        if (!navigator.geolocation) return resolve({ lat: 0, lng: 0 });
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve({ lat: 0, lng: 0 }),
-        );
-      });
-
       const result = await placeOrder({
         items: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
-        address,
-        delivery_lat: coords.lat,
-        delivery_lng: coords.lng,
+        address: location.address,
+        delivery_lat: location.lat,
+        delivery_lng: location.lng,
       });
 
       if (!result.ok) {
@@ -71,7 +64,7 @@ export function CartView() {
           action={
             <a
               href="/"
-              className="mt-2 inline-flex h-9 items-center rounded-lg bg-(--color-primary) px-4 text-sm font-semibold text-white"
+              className="mt-2 inline-flex h-9 items-center rounded-lg bg-(--color-primary) px-4 text-sm font-semibold text-(--color-primary-foreground)"
             >
               Browse catalog
             </a>
@@ -85,15 +78,12 @@ export function CartView() {
     <div className="mx-auto max-w-5xl">
       <div className="lg:grid lg:grid-cols-5 lg:gap-8">
         {/* Left: item list */}
-        <div className="lg:col-span-3 space-y-3">
+        <div className="lg:col-span-3 space-y-3 border border-(--color-border) bg-(--color-background) p-4 lg:p-6 rounded-2xl">
           <h2 className="text-base font-semibold text-(--color-foreground)">
             Your items ({count})
           </h2>
           {lines.map((line) => (
-            <div
-              key={line.product_id}
-              className="flex items-center gap-4 rounded-xl border border-(--color-border) bg-(--color-background) p-4"
-            >
+            <div key={line.product_id} className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-(--color-muted)">
                 <Package className="h-5 w-5 text-(--color-muted-foreground)" />
               </div>
@@ -109,7 +99,7 @@ export function CartView() {
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--color-border) text-(--color-foreground) transition-colors hover:bg-(--color-muted)"
                 >
                   {line.quantity === 1 ? (
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4 text-(--color-destructive)" />
                   ) : (
                     <Minus className="h-4 w-4" />
                   )}
@@ -117,7 +107,7 @@ export function CartView() {
                 <span className="w-6 text-center font-semibold">{line.quantity}</span>
                 <button
                   onClick={() => setQuantity(line.product_id, line.quantity + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-primary) text-white transition-colors hover:bg-primary/90"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-primary) text-(--color-primary-foreground) transition-colors hover:opacity-90"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -132,12 +122,19 @@ export function CartView() {
         {/* Right: order summary */}
         <div className="mt-6 lg:col-span-2 lg:mt-0">
           <div className="sticky top-30 rounded-2xl border border-(--color-border) bg-(--color-background) p-5">
-            <h2 className="mb-4 text-base font-semibold text-(--color-foreground)">Order summary</h2>
+            <h2 className="mb-4 text-base font-semibold text-(--color-foreground)">
+              Order summary
+            </h2>
 
             <div className="space-y-2 text-sm">
               {lines.map((line) => (
-                <div key={line.product_id} className="flex justify-between text-(--color-muted-foreground)">
-                  <span>{line.name} × {line.quantity}</span>
+                <div
+                  key={line.product_id}
+                  className="flex justify-between text-(--color-muted-foreground)"
+                >
+                  <span>
+                    {line.name} × {line.quantity}
+                  </span>
                   <span>PKR {(line.price * line.quantity).toLocaleString()}</span>
                 </div>
               ))}
@@ -152,31 +149,30 @@ export function CartView() {
 
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-(--color-muted) p-3">
               <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-(--color-muted-foreground)" />
-              <p className="text-xs text-(--color-muted-foreground)">Cash on delivery — pay when your order arrives.</p>
+              <p className="text-xs text-(--color-muted-foreground)">
+                Cash on delivery — pay when your order arrives.
+              </p>
             </div>
 
             <div className="mt-4 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-(--color-foreground)">
                 <MapPin className="h-4 w-4 text-(--color-primary)" />
-                Delivery address
+                Delivery location
               </label>
-              <textarea
-                placeholder="Enter your full delivery address…"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                rows={3}
-                className="w-full resize-none rounded-lg border border-(--color-border) bg-(--color-background) px-3 py-2 text-sm placeholder:text-(--color-muted-foreground) focus:border-(--color-ring) focus:outline-none focus:ring-2 focus:ring-ring/20"
+              <LocationPicker
+                address={location.address}
+                lat={location.lat}
+                lng={location.lng}
+                onLocationChange={setLocation}
               />
             </div>
 
-            {error && (
-              <p className="mt-2 text-sm text-(--color-destructive)">{error}</p>
-            )}
+            {error && <p className="mt-2 text-sm text-(--color-destructive)">{error}</p>}
 
             <button
               onClick={checkout}
-              disabled={placing || address.trim().length < 5}
-              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-(--color-primary) text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={placing || location.address.trim().length < 5}
+              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-(--color-primary) text-sm font-semibold text-(--color-primary-foreground) transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {placing ? "Placing order…" : "Place order (COD)"}
             </button>

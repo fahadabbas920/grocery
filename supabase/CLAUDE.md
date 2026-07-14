@@ -4,6 +4,7 @@ Postgres + Auth + Realtime + Storage. Configured entirely via in-repo migrations
 so the backend is reproducible (`supabase db push`).
 
 ## Schema (migrations, applied in filename order)
+
 1. `..._init_auth_profiles.sql` — `user_role`/`order_status` enums; `profiles`
    (1:1 with `auth.users`); `auth_role()` helper (SECURITY DEFINER); auto-create
    profile trigger on signup.
@@ -22,6 +23,7 @@ so the backend is reproducible (`supabase db push`).
    authenticated user, written by admins only. Seeds `maps_enabled = false`.
 
 ## RLS model (`auth_role()` reads caller role)
+
 - **customer** — own profile + own orders/items; rider info & location of their
   assigned active order.
 - **rider** — assigned orders (read + advance status); upsert own location.
@@ -29,15 +31,18 @@ so the backend is reproducible (`supabase db push`).
 - **admin** — everything, including role elevation (guarded by `guard_profile_role`).
 
 ## Storage
+
 Bucket names mirror `packages/shared` `STORAGE_BUCKETS`. Product image URLs use
 Supabase Storage transforms (resize/quality) — see `packages/db/src/storage.ts`.
 
 ## Edge Functions
+
 - `on-order-assigned` — notification hook (stub; extend for push/SMS).
 - `cleanup-product-image` — deletes orphaned storage objects.
-Deploy: `supabase functions deploy <name>`.
+  Deploy: `supabase functions deploy <name>`.
 
 ## Workflow
+
 ```
 supabase link --project-ref <ref>   # one-time
 supabase db push                    # apply migrations
@@ -45,5 +50,6 @@ supabase db lint                    # validate SQL
 supabase functions deploy on-order-assigned
 pnpm db:types                       # regenerate TS types (from repo root)
 ```
+
 Edge functions read `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` from the function
 environment (auto-injected) — never hardcoded.

@@ -4,10 +4,7 @@ import { CatalogBrowser, type CatalogItem } from "@/components/catalog-browser";
 
 export default async function HomePage() {
   const supabase = await getServerSupabase();
-  const [products, categories] = await Promise.all([
-    getCatalog(supabase),
-    getCategories(supabase),
-  ]);
+  const [products, categories] = await Promise.all([getCatalog(supabase), getCategories(supabase)]);
 
   const items: CatalogItem[] = products.map((p) => {
     const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;

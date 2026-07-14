@@ -1,5 +1,6 @@
 import { UserPlus } from "lucide-react";
 import { PageHeader } from "@grocery/ui";
+import { getAccounts } from "@grocery/db/queries";
 import { requireOpsProfile } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -11,12 +12,7 @@ export default async function AccountsPage() {
   if (profile.role !== "admin") redirect("/");
 
   const supabase = await getServerSupabase();
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("id, full_name, role, phone")
-    .order("role");
-
-  const all = users ?? [];
+  const all = await getAccounts(supabase);
 
   return (
     <div>

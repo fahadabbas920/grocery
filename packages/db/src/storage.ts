@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { PRODUCT_IMAGE_TRANSFORM, STORAGE_BUCKETS } from "@grocery/shared";
+import { STORAGE_BUCKETS } from "@grocery/shared";
 import type { Database } from "./types.gen";
 
 type DB = SupabaseClient<Database>;
@@ -10,14 +10,9 @@ type DB = SupabaseClient<Database>;
  */
 export function getProductImageUrl(supabase: DB, imagePath: string | null): string | null {
   if (!imagePath) return null;
-  const { data } = supabase.storage.from(STORAGE_BUCKETS.productImages).getPublicUrl(imagePath, {
-    transform: {
-      width: PRODUCT_IMAGE_TRANSFORM.width,
-      height: PRODUCT_IMAGE_TRANSFORM.height,
-      resize: PRODUCT_IMAGE_TRANSFORM.resize,
-      quality: PRODUCT_IMAGE_TRANSFORM.quality,
-    },
-  });
+  // Transform (resize/quality) requires Supabase Pro. Use the plain public URL
+  // so images work on the free plan; CSS handles the display sizing.
+  const { data } = supabase.storage.from(STORAGE_BUCKETS.productImages).getPublicUrl(imagePath);
   return data.publicUrl;
 }
 

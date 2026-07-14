@@ -4,7 +4,7 @@ import { isMapsEnabled } from "@grocery/db/queries";
 import { requireOpsProfile } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { MapsToggle } from "@/components/maps-toggle";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@grocery/ui/components/separator";
 
 export default async function SettingsPage() {
   const profile = await requireOpsProfile();
@@ -15,10 +15,7 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Settings"
-        description="Runtime configuration for the platform"
-      />
+      <PageHeader title="Settings" description="Runtime configuration for the platform" />
 
       <div className="max-w-xl space-y-0 rounded-xl border border-(--color-border) bg-(--color-card) overflow-hidden">
         <div className="p-5">

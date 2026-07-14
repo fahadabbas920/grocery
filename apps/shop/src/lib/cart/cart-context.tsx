@@ -41,31 +41,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
   }, [lines]);
 
-  const value = useMemo<CartState>(() => ({
-    lines,
-    isOpen,
-    setIsOpen,
-    add: (item) =>
-      setLines((prev) => {
-        const existing = prev.find((l) => l.product_id === item.product_id);
-        if (existing) {
-          return prev.map((l) =>
-            l.product_id === item.product_id ? { ...l, quantity: l.quantity + 1 } : l,
-          );
-        }
-        return [...prev, { ...item, quantity: 1 }];
-      }),
-    setQuantity: (productId, quantity) =>
-      setLines((prev) =>
-        quantity <= 0
-          ? prev.filter((l) => l.product_id !== productId)
-          : prev.map((l) => (l.product_id === productId ? { ...l, quantity } : l)),
-      ),
-    remove: (productId) => setLines((prev) => prev.filter((l) => l.product_id !== productId)),
-    clear: () => setLines([]),
-    total: lines.reduce((sum, l) => sum + l.price * l.quantity, 0),
-    count: lines.reduce((sum, l) => sum + l.quantity, 0),
-  }), [lines, isOpen]);
+  const value = useMemo<CartState>(
+    () => ({
+      lines,
+      isOpen,
+      setIsOpen,
+      add: (item) =>
+        setLines((prev) => {
+          const existing = prev.find((l) => l.product_id === item.product_id);
+          if (existing) {
+            return prev.map((l) =>
+              l.product_id === item.product_id ? { ...l, quantity: l.quantity + 1 } : l,
+            );
+          }
+          return [...prev, { ...item, quantity: 1 }];
+        }),
+      setQuantity: (productId, quantity) =>
+        setLines((prev) =>
+          quantity <= 0
+            ? prev.filter((l) => l.product_id !== productId)
+            : prev.map((l) => (l.product_id === productId ? { ...l, quantity } : l)),
+        ),
+      remove: (productId) => setLines((prev) => prev.filter((l) => l.product_id !== productId)),
+      clear: () => setLines([]),
+      total: lines.reduce((sum, l) => sum + l.price * l.quantity, 0),
+      count: lines.reduce((sum, l) => sum + l.quantity, 0),
+    }),
+    [lines, isOpen],
+  );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

@@ -32,15 +32,12 @@ export function MapsToggle({ initialEnabled }: { initialEnabled: boolean }) {
           Google Maps integration
         </Label>
         <p className="text-xs text-(--color-muted-foreground) mt-0.5">
-          {enabled ? "Live map visible on customer order-tracking page." : "Map is hidden; text status is shown instead."}
+          {enabled
+            ? "Live map visible on customer order-tracking page."
+            : "Map is hidden; text status is shown instead."}
         </p>
       </div>
-      <Switch
-        id="maps-switch"
-        checked={enabled}
-        onCheckedChange={toggle}
-        disabled={saving}
-      />
+      <Switch id="maps-switch" checked={enabled} onCheckedChange={toggle} disabled={saving} />
     </div>
   );
 }

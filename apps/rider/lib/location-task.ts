@@ -33,11 +33,14 @@ if (!IS_EXPO_GO) {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from("rider_locations").upsert({
-      rider_id: user.id,
-      lat: latest.coords.latitude,
-      lng: latest.coords.longitude,
-    });
+    await supabase.from("rider_locations").upsert(
+      {
+        rider_id: user.id,
+        lat: latest.coords.latitude,
+        lng: latest.coords.longitude,
+      },
+      { onConflict: "rider_id" },
+    );
   });
 }
 

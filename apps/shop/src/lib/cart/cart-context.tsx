@@ -7,6 +7,9 @@ export interface CartLine {
   name: string;
   price: number;
   quantity: number;
+  store_id: string;
+  store_name: string;
+  delivery_fee: number;
 }
 
 interface CartState {

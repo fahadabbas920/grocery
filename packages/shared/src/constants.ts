@@ -6,6 +6,17 @@ export type UserRole = (typeof USER_ROLES)[number];
 /** Roles permitted into the Ops Console (apps/ops). */
 export const OPS_ROLES: readonly UserRole[] = ["admin", "stock_keeper"];
 
+/** A user's role within a single store/vendor (multi-tenant). Mirrors the
+ *  `store_role` Postgres enum. `stock_keeper` users are linked to a store via
+ *  `store_members`; the platform `admin` is global and holds no membership. */
+export const STORE_ROLES = ["owner", "staff"] as const;
+export type StoreRole = (typeof STORE_ROLES)[number];
+
+/** Store onboarding lifecycle. Mirrors the `stores.status` check constraint.
+ *  Admin-approval gated: a store goes live only when an admin sets `active`. */
+export const STORE_STATUSES = ["invited", "onboarding", "active", "suspended"] as const;
+export type StoreStatus = (typeof STORE_STATUSES)[number];
+
 /** Supabase Storage bucket names. */
 export const STORAGE_BUCKETS = {
   productImages: "product-images",

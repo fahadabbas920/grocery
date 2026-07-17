@@ -38,25 +38,66 @@ export async function placeOrder(input: {
 
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  // Fetch authoritative prices + stock for the ordered products.
+  // Fetch authoritative prices + stock + owning store (with fee/open state) for the products.
   const productIds = parsed.data.items.map((i) => i.product_id);
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, price, inventory(is_out_of_stock)")
+    .select(
+      "id, price, store_id, store:stores(id, name, is_open, delivery_fee), inventory(is_out_of_stock)",
+    )
     .in("id", productIds);
   if (productsError || !products) return { ok: false, error: "Could not load products" };
 
-  const priceById = new Map(products.map((p) => [p.id, Number(p.price)]));
+  const productById = new Map(products.map((p) => [p.id, p]));
   for (const p of products) {
     const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;
     if (inv?.is_out_of_stock) return { ok: false, error: "An item is out of stock" };
   }
+  if (parsed.data.items.some((i) => !productById.get(i.product_id)?.store_id)) {
+    return { ok: false, error: "Could not load products" };
+  }
 
-  const total = parsed.data.items.reduce((sum, item) => {
-    const price = priceById.get(item.product_id) ?? 0;
-    return sum + price * item.quantity;
-  }, 0);
+  // Per-shop metadata (name, open state, delivery fee) keyed by store id.
+  const storeMeta = new Map<string, { name: string; is_open: boolean; delivery_fee: number }>();
+  for (const p of products) {
+    const s = Array.isArray(p.store) ? p.store[0] : p.store;
+    if (s)
+      storeMeta.set(s.id, {
+        name: s.name,
+        is_open: s.is_open,
+        delivery_fee: Number(s.delivery_fee),
+      });
+  }
 
+  // Group the cart by owning store → one child order per shop.
+  const byStore = new Map<string, { product_id: string; quantity: number; unit_price: number }[]>();
+  for (const item of parsed.data.items) {
+    const product = productById.get(item.product_id)!;
+    const storeId = product.store_id as string;
+    const line = {
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: Number(product.price),
+    };
+    (byStore.get(storeId) ?? byStore.set(storeId, []).get(storeId)!).push(line);
+  }
+
+  // Reject the whole order if any shop is closed.
+  for (const storeId of byStore.keys()) {
+    const meta = storeMeta.get(storeId);
+    if (meta && !meta.is_open) {
+      return { ok: false, error: `${meta.name} is currently closed. Please remove its items.` };
+    }
+  }
+
+  // Grand total = every line + each shop's delivery fee.
+  let total = 0;
+  for (const [storeId, lines] of byStore) {
+    total += lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0);
+    total += storeMeta.get(storeId)?.delivery_fee ?? 0;
+  }
+
+  // 1. Parent order (customer-facing grand total).
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
@@ -71,17 +112,26 @@ export async function placeOrder(input: {
     .single();
   if (orderError || !order) return { ok: false, error: orderError?.message ?? "Order failed" };
 
-  const itemsToInsert = parsed.data.items.map((item) => ({
-    order_id: order.id,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    unit_price: priceById.get(item.product_id) ?? 0,
-  }));
-  const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert);
-  if (itemsError) {
-    // Roll back the orphaned order so the DB stays consistent.
-    await supabase.from("orders").delete().eq("id", order.id);
-    return { ok: false, error: itemsError.message };
+  // 2. One child store_order per shop (with its delivery fee) + line items. Roll back on failure.
+  try {
+    for (const [storeId, lines] of byStore) {
+      const subtotal = lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0);
+      const deliveryFee = storeMeta.get(storeId)?.delivery_fee ?? 0;
+      const { data: child, error: childError } = await supabase
+        .from("store_orders")
+        .insert({ order_id: order.id, store_id: storeId, subtotal, delivery_fee: deliveryFee })
+        .select("id")
+        .single();
+      if (childError || !child) throw childError ?? new Error("Order failed");
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(lines.map((l) => ({ store_order_id: child.id, ...l })));
+      if (itemsError) throw itemsError;
+    }
+  } catch (e) {
+    await supabase.from("orders").delete().eq("id", order.id); // cascades to children + items
+    return { ok: false, error: e instanceof Error ? e.message : "Order failed" };
   }
 
   return { ok: true, orderId: order.id };

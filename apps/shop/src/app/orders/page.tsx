@@ -6,6 +6,20 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { ORDER_STATUS_LABELS, formatOrderCode, type OrderStatus } from "@grocery/shared";
 import { ClipboardList, MapPin, ChevronRight, ShoppingBag } from "lucide-react";
 
+const PROGRESS: OrderStatus[] = ["placed", "preparing", "on_the_way", "delivered"];
+
+/** Overall status of a parent order, derived from its per-shop children. */
+function deriveStatus(children: { status: OrderStatus }[]): OrderStatus {
+  if (!children.length) return "placed";
+  if (children.every((c) => c.status === "delivered")) return "delivered";
+  if (children.every((c) => c.status === "cancelled")) return "cancelled";
+  const active = children.filter((c) => c.status !== "cancelled");
+  return active.reduce<OrderStatus>(
+    (min, c) => (PROGRESS.indexOf(c.status) < PROGRESS.indexOf(min) ? c.status : min),
+    "delivered",
+  );
+}
+
 export default async function OrdersPage() {
   const supabase = await getServerSupabase();
 
@@ -51,10 +65,10 @@ export default async function OrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((order) => {
-            const cfg =
-              ORDER_STATUS_CONFIG[order.status as OrderStatus] ?? ORDER_STATUS_CONFIG.placed;
+            const status = deriveStatus(order.store_orders ?? []);
+            const cfg = ORDER_STATUS_CONFIG[status] ?? ORDER_STATUS_CONFIG.placed;
             const StatusIcon = cfg.icon;
-            const isActive = !["delivered", "cancelled"].includes(order.status);
+            const isActive = !["delivered", "cancelled"].includes(status);
             return (
               <Link key={order.id} href={`/orders/${order.id}`} className="inline-block w-full">
                 <div className="group flex items-center gap-4 rounded-2xl border border-(--color-border) bg-(--color-background) p-4 transition-all hover:border-primary/30 hover:shadow-md">
@@ -96,7 +110,7 @@ export default async function OrdersPage() {
                     <span
                       className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cfg.badge}`}
                     >
-                      {ORDER_STATUS_LABELS[order.status as OrderStatus]}
+                      {ORDER_STATUS_LABELS[status]}
                     </span>
                     <span className="text-xs text-(--color-muted-foreground)">
                       {new Date(order.created_at).toLocaleDateString("en-PK", {

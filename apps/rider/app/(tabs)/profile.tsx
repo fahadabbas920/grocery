@@ -53,9 +53,9 @@ export default function ProfileScreen() {
       const weekDelivered = delivered.filter((o) => isWithinLast7Days(o.created_at));
       setStats({
         todayDeliveries: todayDelivered.length,
-        todayEarnings: todayDelivered.reduce((s, o) => s + Number(o.total), 0),
+        todayEarnings: todayDelivered.reduce((s, o) => s + Number(o.subtotal), 0),
         weekDeliveries: weekDelivered.length,
-        weekEarnings: weekDelivered.reduce((s, o) => s + Number(o.total), 0),
+        weekEarnings: weekDelivered.reduce((s, o) => s + Number(o.subtotal), 0),
         allTimeDeliveries: delivered.length,
       });
     } catch {

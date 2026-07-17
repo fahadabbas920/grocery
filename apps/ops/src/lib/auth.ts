@@ -7,6 +7,8 @@ export interface SessionProfile {
   id: string;
   role: UserRole;
   full_name: string;
+  /** The store this user operates (stock_keeper); null for admin (global). */
+  store_id: string | null;
 }
 
 /**
@@ -36,7 +38,18 @@ export async function requireOpsProfile(): Promise<SessionProfile> {
     redirect("/login?error=forbidden");
   }
 
-  return profile;
+  // Resolve the vendor's store (admins are global → null).
+  let store_id: string | null = null;
+  if (profile.role === "stock_keeper") {
+    const { data: membership } = await supabase
+      .from("store_members")
+      .select("store_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    store_id = membership?.store_id ?? null;
+  }
+
+  return { ...profile, store_id };
 }
 
 export function isAdmin(role: UserRole) {

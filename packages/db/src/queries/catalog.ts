@@ -9,12 +9,19 @@ interface StockInput {
   is_out_of_stock: boolean;
 }
 
-/** Full catalog with category + live stock state — used by shop and ops. */
-export async function getCatalog(supabase: DB) {
-  const { data, error } = await supabase
+/**
+ * Full catalog with category, live stock, and the source store (for the blended
+ * "Sold by <Shop>" storefront). Pass `storeId` to scope to one vendor (ops catalog).
+ */
+export async function getCatalog(supabase: DB, opts: { storeId?: string } = {}) {
+  let query = supabase
     .from("products")
-    .select("*, category:categories(*), inventory(quantity, is_out_of_stock)")
+    .select(
+      "*, category:categories(*), store:stores(id, name, delivery_fee), inventory(quantity, is_out_of_stock)",
+    )
     .order("name");
+  if (opts.storeId) query = query.eq("store_id", opts.storeId);
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }
@@ -38,10 +45,19 @@ export async function getProduct(supabase: DB, productId: string) {
 // ─── Mutations ────────────────────────────────────────────────────────────────
 // Centralized product/inventory writes with zod validation. Throw on error.
 
-/** Create a product row plus its initial inventory. Returns the new product id. */
-export async function createProduct(supabase: DB, product: ProductInput, stock: StockInput) {
+/** Create a product row (in the given store) plus its initial inventory. Returns the id. */
+export async function createProduct(
+  supabase: DB,
+  storeId: string,
+  product: ProductInput,
+  stock: StockInput,
+) {
   const values = productInputSchema.parse(product);
-  const { data: row, error } = await supabase.from("products").insert(values).select("id").single();
+  const { data: row, error } = await supabase
+    .from("products")
+    .insert({ ...values, store_id: storeId })
+    .select("id")
+    .single();
   if (error) throw error;
 
   const inv = inventoryUpdateSchema.parse({ product_id: row.id, ...stock });

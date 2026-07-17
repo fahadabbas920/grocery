@@ -1,12 +1,19 @@
 import { PageHeader } from "@grocery/ui";
-import { getCatalog, getCategories, getProductImageUrl } from "@grocery/db";
+import { getCatalog, getCategories } from "@grocery/db/queries";
+import { getProductImageUrl } from "@grocery/db";
+import { requireOpsProfile } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { AddProductForm } from "@/components/add-product-form";
 import { CatalogGrid } from "@/components/catalog-grid";
 
 export default async function CatalogPage() {
+  const profile = await requireOpsProfile();
   const supabase = await getServerSupabase();
-  const [products, categories] = await Promise.all([getCatalog(supabase), getCategories(supabase)]);
+  // Vendor sees only their store's products; admin sees all.
+  const [products, categories] = await Promise.all([
+    getCatalog(supabase, { storeId: profile.store_id ?? undefined }),
+    getCategories(supabase),
+  ]);
 
   const mapped = products.map((p) => {
     const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;
@@ -30,7 +37,7 @@ export default async function CatalogPage() {
       <PageHeader
         title="Catalog"
         description={`${products.length} product${products.length !== 1 ? "s" : ""}`}
-        action={<AddProductForm categories={categories} />}
+        action={<AddProductForm categories={categories} storeId={profile.store_id} />}
       />
       <CatalogGrid products={mapped} categories={categories} />
     </div>

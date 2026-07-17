@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EmptyState } from "@grocery/ui";
+import { EmptyState, QuantityStepper } from "@grocery/ui";
 import { useCart } from "@/lib/cart/cart-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { placeOrder } from "@/app/cart/actions";
-import { Minus, Package, Plus, ShoppingBag, Trash2, MapPin, Banknote } from "lucide-react";
+import { Package, ShoppingBag, MapPin, Banknote } from "lucide-react";
 import { LocationPicker, type PickedLocation } from "./location-picker";
 import { Separator } from "@grocery/ui/components/separator";
 import { toast } from "sonner";
@@ -17,6 +17,21 @@ export function CartView() {
   const [location, setLocation] = useState<PickedLocation>({ lat: 0, lng: 0, address: "" });
   const [error, setError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+
+  // Group by shop so each shop's items + its delivery fee show together (one delivery per shop).
+  const storeGroups = Array.from(
+    lines.reduce((map, l) => {
+      const g = map.get(l.store_id) ?? {
+        name: l.store_name,
+        fee: l.delivery_fee,
+        lines: [] as typeof lines,
+      };
+      g.lines.push(l);
+      return map.set(l.store_id, g);
+    }, new Map<string, { name: string; fee: number; lines: typeof lines }>()),
+  );
+  const deliveryTotal = storeGroups.reduce((sum, [, g]) => sum + g.fee, 0);
+  const grandTotal = total + deliveryTotal;
 
   async function checkout() {
     setPlacing(true);
@@ -93,25 +108,11 @@ export function CartView() {
                   PKR {line.price.toLocaleString()}
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setQuantity(line.product_id, line.quantity - 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--color-border) text-(--color-foreground) transition-colors hover:bg-(--color-muted)"
-                >
-                  {line.quantity === 1 ? (
-                    <Trash2 className="h-4 w-4 text-(--color-destructive)" />
-                  ) : (
-                    <Minus className="h-4 w-4" />
-                  )}
-                </button>
-                <span className="w-6 text-center font-semibold">{line.quantity}</span>
-                <button
-                  onClick={() => setQuantity(line.product_id, line.quantity + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-primary) text-(--color-primary-foreground) transition-colors hover:opacity-90"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+              <QuantityStepper
+                quantity={line.quantity}
+                onDecrement={() => setQuantity(line.product_id, line.quantity - 1)}
+                onIncrement={() => setQuantity(line.product_id, line.quantity + 1)}
+              />
               <p className="w-24 shrink-0 text-right text-sm font-semibold text-(--color-foreground)">
                 PKR {(line.price * line.quantity).toLocaleString()}
               </p>
@@ -126,16 +127,27 @@ export function CartView() {
               Order summary
             </h2>
 
-            <div className="space-y-2 text-sm">
-              {lines.map((line) => (
-                <div
-                  key={line.product_id}
-                  className="flex justify-between text-(--color-muted-foreground)"
-                >
-                  <span>
-                    {line.name} × {line.quantity}
-                  </span>
-                  <span>PKR {(line.price * line.quantity).toLocaleString()}</span>
+            <div className="space-y-3 text-sm">
+              {storeGroups.map(([storeId, g]) => (
+                <div key={storeId} className="space-y-1.5">
+                  {storeGroups.length > 1 && (
+                    <p className="text-xs font-semibold text-(--color-foreground)">{g.name}</p>
+                  )}
+                  {g.lines.map((line) => (
+                    <div
+                      key={line.product_id}
+                      className="flex justify-between text-(--color-muted-foreground)"
+                    >
+                      <span>
+                        {line.name} × {line.quantity}
+                      </span>
+                      <span>PKR {(line.price * line.quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-xs text-(--color-muted-foreground)">
+                    <span>Delivery{storeGroups.length > 1 ? ` · ${g.name}` : ""}</span>
+                    <span>{g.fee > 0 ? `PKR ${g.fee.toLocaleString()}` : "Free"}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -144,7 +156,7 @@ export function CartView() {
 
             <div className="flex justify-between font-bold text-(--color-foreground)">
               <span>Total</span>
-              <span>PKR {total.toLocaleString()}</span>
+              <span>PKR {grandTotal.toLocaleString()}</span>
             </div>
 
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-(--color-muted) p-3">

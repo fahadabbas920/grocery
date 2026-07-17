@@ -3,11 +3,16 @@ import type { Database } from "../types.gen";
 
 type DB = SupabaseClient<Database>;
 
-/** Completed / cancelled orders for a rider (history, most recent first). */
+// A rider is assigned to per-shop CHILD orders. Each carries its store, the parent's
+// delivery context, and line items.
+const RIDER_ORDER =
+  "*, store:stores(name), order:orders(id, address, delivery_lat, delivery_lng, customer_id), items:order_items(*, product:products(name))" as const;
+
+/** Completed / cancelled child orders for a rider (history, most recent first). */
 export async function getRiderOrderHistory(supabase: DB, riderId: string) {
   const { data, error } = await supabase
-    .from("orders")
-    .select("*, items:order_items(*, product:products(name))")
+    .from("store_orders")
+    .select(RIDER_ORDER)
     .eq("rider_id", riderId)
     .in("status", ["delivered", "cancelled"])
     .order("created_at", { ascending: false })
@@ -16,11 +21,11 @@ export async function getRiderOrderHistory(supabase: DB, riderId: string) {
   return data;
 }
 
-/** Orders currently assigned to a rider that are not yet delivered. */
+/** Child orders currently assigned to a rider that are not yet delivered. */
 export async function getRiderActiveOrders(supabase: DB, riderId: string) {
   const { data, error } = await supabase
-    .from("orders")
-    .select("*, items:order_items(*, product:products(name))")
+    .from("store_orders")
+    .select(RIDER_ORDER)
     .eq("rider_id", riderId)
     .in("status", ["preparing", "on_the_way"])
     .order("created_at");

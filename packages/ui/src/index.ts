@@ -11,3 +11,6 @@ export * from "./components/stats-card";
 export * from "./components/page-header";
 export * from "./components/section-chip";
 export * from "./components/skeleton";
+export * from "./components/quantity-stepper";
+export * from "./components/sheet";
+export * from "./components/form-drawer";

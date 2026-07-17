@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ORDER_STATUSES } from "./orderStatus";
-import { USER_ROLES } from "./constants";
+import { STORE_ROLES, STORE_STATUSES, USER_ROLES } from "./constants";
 
 /**
  * Zod schemas — validate at every boundary (form input, API handlers, edge functions).
@@ -13,6 +13,28 @@ export const longitude = z.number().min(-180).max(180);
 
 export const roleSchema = z.enum(USER_ROLES);
 export const orderStatusSchema = z.enum(ORDER_STATUSES);
+export const storeRoleSchema = z.enum(STORE_ROLES);
+export const storeStatusSchema = z.enum(STORE_STATUSES);
+
+/** Store profile edited by admin (create) or vendor (own profile). */
+export const storeInputSchema = z.object({
+  name: z.string().min(1).max(160),
+  slug: z.string().min(1).max(80).optional().nullable(),
+  phone: z.string().min(7).max(20).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  delivery_lat: latitude.optional().nullable(),
+  delivery_lng: longitude.optional().nullable(),
+  delivery_radius_m: z.number().int().positive().optional().nullable(),
+  is_open: z.boolean().optional(),
+  delivery_fee: z.number().nonnegative().max(100000).optional(),
+});
+
+/** Admin invites a vendor owner and creates their store. */
+export const inviteVendorSchema = z.object({
+  email: z.string().email(),
+  full_name: z.string().min(1).max(120),
+  store: storeInputSchema,
+});
 
 export const profileSchema = z.object({
   id: uuid,
@@ -76,3 +98,5 @@ export type InventoryUpdate = z.infer<typeof inventoryUpdateSchema>;
 export type CartItem = z.infer<typeof cartItemSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type RiderLocationInput = z.infer<typeof riderLocationSchema>;
+export type StoreInput = z.infer<typeof storeInputSchema>;
+export type InviteVendorInput = z.infer<typeof inviteVendorSchema>;

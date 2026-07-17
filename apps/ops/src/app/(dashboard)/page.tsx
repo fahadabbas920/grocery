@@ -1,6 +1,8 @@
 import { ShoppingBag, CheckCircle2, TrendingUp, BarChart3 } from "lucide-react";
 import { PageHeader, StatsCard, OrderStatusBadge } from "@grocery/ui";
-import { getOrdersByStatus } from "@grocery/db/queries";
+import { formatOrderCode } from "@grocery/shared";
+import { getStoreOrders } from "@grocery/db/queries";
+import { requireOpsProfile } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase/server";
 import {
   Table,
@@ -12,13 +14,19 @@ import {
 } from "@/components/ui/table";
 
 export default async function DashboardHome() {
+  const profile = await requireOpsProfile();
   const supabase = await getServerSupabase();
+  const storeId = profile.store_id ?? undefined; // admin → all stores
   const [active, delivered] = await Promise.all([
-    getOrdersByStatus(supabase, ["placed", "preparing", "on_the_way"]),
-    getOrdersByStatus(supabase, ["delivered"]),
+    getStoreOrders(supabase, { storeId, statuses: ["placed", "preparing", "on_the_way"] }),
+    getStoreOrders(supabase, { storeId, statuses: ["delivered"] }),
   ]);
 
-  const revenue = delivered.reduce((sum, o) => sum + Number(o.total), 0);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const deliveredToday = delivered.filter((o) => new Date(o.updated_at) >= startOfToday);
+
+  const revenue = delivered.reduce((sum, o) => sum + Number(o.subtotal), 0);
   const avgOrderValue = delivered.length > 0 ? Math.round(revenue / delivered.length) : 0;
 
   const recent = [...active, ...delivered]
@@ -37,7 +45,7 @@ export default async function DashboardHome() {
         />
         <StatsCard
           label="Delivered today"
-          value={delivered.length}
+          value={deliveredToday.length}
           icon={<CheckCircle2 className="h-4 w-4" />}
         />
         <StatsCard
@@ -71,14 +79,16 @@ export default async function DashboardHome() {
                 {recent.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-mono text-xs text-(--color-muted-foreground)">
-                      #{order.id.slice(0, 8).toUpperCase()}
+                      #{formatOrderCode(order.id)}
                     </TableCell>
-                    <TableCell className="max-w-48 truncate text-sm">{order.address}</TableCell>
+                    <TableCell className="max-w-48 truncate text-sm">
+                      {order.order?.address ?? "—"}
+                    </TableCell>
                     <TableCell>
                       <OrderStatusBadge status={order.status} />
                     </TableCell>
                     <TableCell className="text-right text-sm font-semibold">
-                      PKR {Number(order.total).toLocaleString()}
+                      PKR {Number(order.subtotal).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}

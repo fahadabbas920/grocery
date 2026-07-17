@@ -11,12 +11,16 @@ insert into public.categories (name, sort_order) values
   ('Household', 6)
 on conflict (name) do nothing;
 
--- Sample products. The on_product_created trigger auto-creates an inventory row.
+-- Sample products, assigned to the backfilled Default Store (multi-tenant: products
+-- carry store_id). The on_product_created trigger auto-creates an inventory row.
 with cat as (
   select id, name from public.categories
+),
+store as (
+  select id from public.stores where slug = 'default-store' limit 1
 )
-insert into public.products (name, description, category_id, price)
-select v.name, v.description, cat.id, v.price
+insert into public.products (name, description, category_id, price, store_id)
+select v.name, v.description, cat.id, v.price, store.id
 from (values
   ('Bananas (1 dozen)', 'Fresh ripe bananas', 'Fruits & Vegetables', 180.00),
   ('Tomatoes (1 kg)', 'Farm tomatoes', 'Fruits & Vegetables', 120.00),
@@ -28,6 +32,7 @@ from (values
   ('Dishwashing Liquid', '500ml', 'Household', 260.00)
 ) as v(name, description, category_name, price)
 join cat on cat.name = v.category_name
+cross join store
 on conflict do nothing;
 
 -- Give seeded products some starting stock.

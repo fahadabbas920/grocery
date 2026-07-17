@@ -3,19 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, X } from "lucide-react";
-import { Button, Input } from "@grocery/ui";
+import { Button, Input, FormDrawer } from "@grocery/ui";
 import { uploadProductImage } from "@grocery/db";
 import { createProduct, updateProduct } from "@grocery/db/queries";
 import { toast } from "sonner";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@grocery/ui/components/sheet";
 import {
   Select,
   SelectContent,
@@ -95,6 +87,8 @@ interface ProductFormSheetProps {
   categories: Category[];
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** The store new products are created in (vendor's store). Required for add mode. */
+  storeId?: string | null;
   /** Pass an existing product to switch to edit mode. Omit for add mode. */
   product?: ProductFormValues;
 }
@@ -103,6 +97,7 @@ export function ProductFormSheet({
   categories,
   open,
   onOpenChange,
+  storeId,
   product,
 }: ProductFormSheetProps) {
   const router = useRouter();
@@ -166,7 +161,8 @@ export function ProductFormSheet({
         await updateProduct(supabase, product.id, input, stock);
         toast.success("Product updated");
       } else {
-        await createProduct(supabase, input, stock);
+        if (!storeId) throw new Error("No store selected for this product");
+        await createProduct(supabase, storeId, input, stock);
         toast.success("Product added");
       }
 
@@ -182,125 +178,116 @@ export function ProductFormSheet({
   const canSave = !!name.trim() && !!price && Number(price) >= 0 && !!categoryId;
 
   return (
-    <Sheet
+    <FormDrawer
       open={open}
       onOpenChange={(v) => {
         if (!v) close();
         else onOpenChange(true);
       }}
-    >
-      <SheetContent side="right" className="flex w-full max-w-md flex-col gap-0 p-0">
-        <SheetHeader className="border-b border-(--color-border) px-6 py-5">
-          <SheetTitle className="text-lg">{isEdit ? "Edit Product" : "Add New Product"}</SheetTitle>
-          <SheetDescription>
-            {isEdit
-              ? "Update this product's details, price, and stock."
-              : "Add a new product with its price and initial stock."}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
-          <ImageUploadZone preview={preview} onChange={handleFile} onClear={clearFile} />
-
-          <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted-foreground)">
-              Product details
-            </p>
-            <div className="grid gap-1.5">
-              <Label>
-                Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                placeholder="e.g. Full Cream Milk 1L"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Description</Label>
-              <Input
-                placeholder="Short description (optional)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>
-                  Price (PKR) <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>
-                  Category <span className="text-destructive">*</span>
-                </Label>
-                <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted-foreground)">
-              Stock
-            </p>
-            <div className="grid gap-1.5">
-              <Label>{isEdit ? "Quantity" : "Initial quantity"}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="w-32"
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-(--color-border) bg-muted/30 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-(--color-foreground)">
-                  Mark as out of stock
-                </p>
-                <p className="text-xs text-(--color-muted-foreground)">
-                  Hides the add-to-cart button in the shop
-                </p>
-              </div>
-              <Switch checked={outOfStock} onCheckedChange={setOutOfStock} />
-            </div>
-          </div>
-
-          {error && (
-            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-        </div>
-
-        <SheetFooter className="border-t border-(--color-border) px-6 py-4">
+      title={isEdit ? "Edit Product" : "Add New Product"}
+      description={
+        isEdit
+          ? "Update this product's details, price, and stock."
+          : "Add a new product with its price and initial stock."
+      }
+      bodyClassName="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5"
+      footer={
+        <>
           <Button variant="outline" onClick={close} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={onSubmit} disabled={saving || !canSave} className="flex-1">
             {saving ? "Saving…" : isEdit ? "Save changes" : "Add product"}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </>
+      }
+    >
+      <ImageUploadZone preview={preview} onChange={handleFile} onClear={clearFile} />
+
+      <div className="space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted-foreground)">
+          Product details
+        </p>
+        <div className="grid gap-1.5">
+          <Label>
+            Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="e.g. Full Cream Milk 1L"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label>Description</Label>
+          <Input
+            placeholder="Short description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <Label>
+              Price (PKR) <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>
+              Category <span className="text-destructive">*</span>
+            </Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select…" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted-foreground)">
+          Stock
+        </p>
+        <div className="grid gap-1.5">
+          <Label>{isEdit ? "Quantity" : "Initial quantity"}</Label>
+          <Input
+            type="number"
+            min="0"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className="w-32"
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-xl border border-(--color-border) bg-muted/30 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-(--color-foreground)">Mark as out of stock</p>
+            <p className="text-xs text-(--color-muted-foreground)">
+              Hides the add-to-cart button in the shop
+            </p>
+          </div>
+          <Switch checked={outOfStock} onCheckedChange={setOutOfStock} />
+        </div>
+      </div>
+
+      {error && (
+        <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+      )}
+    </FormDrawer>
   );
 }

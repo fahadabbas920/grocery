@@ -8,6 +8,8 @@ export interface ProductCardProps {
   imageUrl: string | null;
   outOfStock?: boolean;
   currency?: string;
+  /** Source shop, shown as a "Sold by …" tag in the blended marketplace catalog. */
+  soldBy?: string | null;
   onClick?: () => void;
   className?: string;
   onAdd?: () => void;
@@ -22,6 +24,7 @@ export function ProductCard({
   imageUrl,
   outOfStock = false,
   currency = "PKR",
+  soldBy,
   onClick,
   className,
   onAdd,
@@ -56,6 +59,11 @@ export function ProductCard({
       </div>
       <CardContent className="p-3">
         <p className="line-clamp-1 text-sm font-medium">{name}</p>
+        {soldBy && (
+          <p className="mt-0.5 line-clamp-1 text-[11px] text-(--color-muted-foreground)">
+            Sold by {soldBy}
+          </p>
+        )}
         <div className="mt-1 flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-(--color-primary)">
             {currency} {price.toLocaleString()}

@@ -8,6 +8,7 @@ export default async function HomePage() {
 
   const items: CatalogItem[] = products.map((p) => {
     const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;
+    const store = Array.isArray(p.store) ? p.store[0] : p.store;
     return {
       id: p.id,
       name: p.name,
@@ -15,6 +16,9 @@ export default async function HomePage() {
       categoryId: p.category_id,
       imageUrl: getProductImageUrl(supabase, p.image_path),
       outOfStock: inv?.is_out_of_stock ?? false,
+      storeId: store?.id ?? "",
+      storeName: store?.name ?? null,
+      deliveryFee: store ? Number(store.delivery_fee) : 0,
     };
   });
 

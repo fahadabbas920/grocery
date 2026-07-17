@@ -29,11 +29,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const mapsEnabled = await isMapsEnabled(supabase);
 
+  const children = (order.store_orders ?? []).map((so) => ({
+    id: so.id,
+    storeName: so.store?.name ?? "Shop",
+    status: so.status,
+    riderId: so.rider_id,
+  }));
+
   return (
     <OrderTracker
       orderId={order.id}
-      initialStatus={order.status}
-      riderId={order.rider_id}
+      initialChildren={children}
       total={Number(order.total)}
       address={order.address}
       mapsEnabled={mapsEnabled}

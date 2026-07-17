@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getOrderWithItems, updateOrderStatus } from "@grocery/db/queries";
+import { getStoreOrder, updateOrderStatus } from "@grocery/db/queries";
 import type { OrderStatus } from "@grocery/shared";
 import { supabase } from "@/lib/supabase";
 import { startLocationSharing, stopLocationSharing } from "@/lib/location-task";
@@ -43,14 +43,14 @@ export default function OrderDetailScreen() {
     setLoading(true);
     setError(false);
     try {
-      const o = await getOrderWithItems(supabase, id);
+      const o = await getStoreOrder(supabase, id);
       setOrder({
         id: o.id,
         status: o.status,
-        total: Number(o.total),
-        address: o.address,
-        lat: o.delivery_lat,
-        lng: o.delivery_lng,
+        total: Number(o.subtotal),
+        address: o.order?.address ?? "",
+        lat: o.order?.delivery_lat ?? 0,
+        lng: o.order?.delivery_lng ?? 0,
         items: (o.items ?? []).map((i) => ({
           name: i.product?.name ?? "Product",
           qty: i.quantity,
@@ -77,7 +77,7 @@ export default function OrderDetailScreen() {
       .channel(`order-detail-${id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` },
+        { event: "UPDATE", schema: "public", table: "store_orders", filter: `id=eq.${id}` },
         (payload) => {
           const next = payload.new as { status: OrderStatus };
           setOrder((prev) => (prev ? { ...prev, status: next.status } : prev));

@@ -17,12 +17,10 @@ export async function getAppSetting<T = unknown>(supabase: DB, key: string): Pro
 
 /** Upsert an app setting (admin-only at the RLS layer). */
 export async function setAppSetting(supabase: DB, key: string, value: unknown) {
-  const { error } = await supabase
-    .from("app_settings")
-    .upsert({
-      key,
-      value: value as Database["public"]["Tables"]["app_settings"]["Insert"]["value"],
-    });
+  const { error } = await supabase.from("app_settings").upsert({
+    key,
+    value: value as Database["public"]["Tables"]["app_settings"]["Insert"]["value"],
+  });
   if (error) throw error;
 }
 

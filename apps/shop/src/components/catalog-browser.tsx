@@ -14,6 +14,9 @@ export interface CatalogItem {
   categoryId: string;
   imageUrl: string | null;
   outOfStock: boolean;
+  storeId: string;
+  storeName: string | null;
+  deliveryFee: number;
 }
 
 interface Category {
@@ -419,9 +422,17 @@ export function CatalogBrowser({
                   price={item.price}
                   imageUrl={item.imageUrl}
                   outOfStock={item.outOfStock}
+                  soldBy={item.storeName}
                   quantity={qty}
                   onAdd={() => {
-                    add({ product_id: item.id, name: item.name, price: item.price });
+                    add({
+                      product_id: item.id,
+                      name: item.name,
+                      price: item.price,
+                      store_id: item.storeId,
+                      store_name: item.storeName ?? "Shop",
+                      delivery_fee: item.deliveryFee,
+                    });
                     setIsOpen(true);
                   }}
                   onIncrement={() => setQuantity(item.id, qty + 1)}

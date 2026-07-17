@@ -9,7 +9,8 @@
     "android": "expo run:android",
     "build:apk": "eas build -p android --profile preview",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",

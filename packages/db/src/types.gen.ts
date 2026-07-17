@@ -8,6 +8,38 @@ export type Database = {
   };
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          created_at: string;
+          detail: Json | null;
+          id: string;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          created_at?: string;
+          detail?: Json | null;
+          id?: string;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          created_at?: string;
+          detail?: Json | null;
+          id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_id_fkey";
+            columns: ["actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       app_settings: {
         Row: {
           key: string;
@@ -79,38 +111,38 @@ export type Database = {
       order_items: {
         Row: {
           id: string;
-          order_id: string;
           product_id: string;
           quantity: number;
+          store_order_id: string;
           unit_price: number;
         };
         Insert: {
           id?: string;
-          order_id: string;
           product_id: string;
           quantity: number;
+          store_order_id: string;
           unit_price: number;
         };
         Update: {
           id?: string;
-          order_id?: string;
           product_id?: string;
           quantity?: number;
+          store_order_id?: string;
           unit_price?: number;
         };
         Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey";
-            columns: ["order_id"];
-            isOneToOne: false;
-            referencedRelation: "orders";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "order_items_product_id_fkey";
             columns: ["product_id"];
             isOneToOne: false;
             referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_store_order_id_fkey";
+            columns: ["store_order_id"];
+            isOneToOne: false;
+            referencedRelation: "store_orders";
             referencedColumns: ["id"];
           },
         ];
@@ -120,22 +152,22 @@ export type Database = {
           changed_by: string | null;
           created_at: string;
           id: string;
-          order_id: string;
           status: Database["public"]["Enums"]["order_status"];
+          store_order_id: string;
         };
         Insert: {
           changed_by?: string | null;
           created_at?: string;
           id?: string;
-          order_id: string;
           status: Database["public"]["Enums"]["order_status"];
+          store_order_id: string;
         };
         Update: {
           changed_by?: string | null;
           created_at?: string;
           id?: string;
-          order_id?: string;
           status?: Database["public"]["Enums"]["order_status"];
+          store_order_id?: string;
         };
         Relationships: [
           {
@@ -146,10 +178,10 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "order_status_history_order_id_fkey";
-            columns: ["order_id"];
+            foreignKeyName: "order_status_history_store_order_id_fkey";
+            columns: ["store_order_id"];
             isOneToOne: false;
-            referencedRelation: "orders";
+            referencedRelation: "store_orders";
             referencedColumns: ["id"];
           },
         ];
@@ -163,8 +195,6 @@ export type Database = {
           delivery_lng: number;
           id: string;
           notes: string | null;
-          rider_id: string | null;
-          status: Database["public"]["Enums"]["order_status"];
           total: number;
           updated_at: string;
         };
@@ -176,8 +206,6 @@ export type Database = {
           delivery_lng: number;
           id?: string;
           notes?: string | null;
-          rider_id?: string | null;
-          status?: Database["public"]["Enums"]["order_status"];
           total: number;
           updated_at?: string;
         };
@@ -189,8 +217,6 @@ export type Database = {
           delivery_lng?: number;
           id?: string;
           notes?: string | null;
-          rider_id?: string | null;
-          status?: Database["public"]["Enums"]["order_status"];
           total?: number;
           updated_at?: string;
         };
@@ -198,13 +224,6 @@ export type Database = {
           {
             foreignKeyName: "orders_customer_id_fkey";
             columns: ["customer_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "orders_rider_id_fkey";
-            columns: ["rider_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -220,6 +239,7 @@ export type Database = {
           image_path: string | null;
           name: string;
           price: number;
+          store_id: string;
           updated_at: string;
         };
         Insert: {
@@ -230,6 +250,7 @@ export type Database = {
           image_path?: string | null;
           name: string;
           price: number;
+          store_id: string;
           updated_at?: string;
         };
         Update: {
@@ -240,6 +261,7 @@ export type Database = {
           image_path?: string | null;
           name?: string;
           price?: number;
+          store_id?: string;
           updated_at?: string;
         };
         Relationships: [
@@ -248,6 +270,13 @@ export type Database = {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "products_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
             referencedColumns: ["id"];
           },
         ];
@@ -305,6 +334,148 @@ export type Database = {
           },
         ];
       };
+      store_members: {
+        Row: {
+          created_at: string;
+          store_id: string;
+          store_role: Database["public"]["Enums"]["store_role"];
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          store_id: string;
+          store_role?: Database["public"]["Enums"]["store_role"];
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          store_id?: string;
+          store_role?: Database["public"]["Enums"]["store_role"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "store_members_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "store_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      store_orders: {
+        Row: {
+          created_at: string;
+          delivery_fee: number;
+          id: string;
+          order_id: string;
+          rider_id: string | null;
+          status: Database["public"]["Enums"]["order_status"];
+          store_id: string;
+          subtotal: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          delivery_fee?: number;
+          id?: string;
+          order_id: string;
+          rider_id?: string | null;
+          status?: Database["public"]["Enums"]["order_status"];
+          store_id: string;
+          subtotal: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          delivery_fee?: number;
+          id?: string;
+          order_id?: string;
+          rider_id?: string | null;
+          status?: Database["public"]["Enums"]["order_status"];
+          store_id?: string;
+          subtotal?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "store_orders_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "store_orders_rider_id_fkey";
+            columns: ["rider_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "store_orders_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      stores: {
+        Row: {
+          address: string | null;
+          created_at: string;
+          delivery_fee: number;
+          delivery_lat: number | null;
+          delivery_lng: number | null;
+          delivery_radius_m: number | null;
+          id: string;
+          is_open: boolean;
+          name: string;
+          phone: string | null;
+          slug: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          address?: string | null;
+          created_at?: string;
+          delivery_fee?: number;
+          delivery_lat?: number | null;
+          delivery_lng?: number | null;
+          delivery_radius_m?: number | null;
+          id?: string;
+          is_open?: boolean;
+          name: string;
+          phone?: string | null;
+          slug?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          created_at?: string;
+          delivery_fee?: number;
+          delivery_lat?: number | null;
+          delivery_lng?: number | null;
+          delivery_radius_m?: number | null;
+          id?: string;
+          is_open?: boolean;
+          name?: string;
+          phone?: string | null;
+          slug?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -314,9 +485,23 @@ export type Database = {
         Args: never;
         Returns: Database["public"]["Enums"]["user_role"];
       };
+      auth_store_id: { Args: never; Returns: string };
+      can_access_store_order: {
+        Args: { p_store_order_id: string };
+        Returns: boolean;
+      };
+      is_my_rider: { Args: { p_profile_id: string }; Returns: boolean };
+      owns_order: { Args: { p_order_id: string }; Returns: boolean };
+      owns_store_order_parent: {
+        Args: { p_store_order_id: string };
+        Returns: boolean;
+      };
+      rider_serves_customer: { Args: { p_rider_id: string }; Returns: boolean };
+      store_has_order: { Args: { p_order_id: string }; Returns: boolean };
     };
     Enums: {
       order_status: "placed" | "preparing" | "on_the_way" | "delivered" | "cancelled";
+      store_role: "owner" | "staff";
       user_role: "customer" | "stock_keeper" | "rider" | "admin";
     };
     CompositeTypes: {
@@ -894,6 +1079,7 @@ export const Constants = {
   public: {
     Enums: {
       order_status: ["placed", "preparing", "on_the_way", "delivered", "cancelled"],
+      store_role: ["owner", "staff"],
       user_role: ["customer", "stock_keeper", "rider", "admin"],
     },
   },

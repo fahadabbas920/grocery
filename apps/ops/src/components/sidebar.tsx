@@ -7,6 +7,8 @@ import {
   LayoutDashboard,
   ShoppingBag,
   Package,
+  Store,
+  Bike,
   Users,
   Settings,
   LogOut,
@@ -22,6 +24,9 @@ const ICONS: Record<string, React.ElementType> = {
   Dashboard: LayoutDashboard,
   Orders: ShoppingBag,
   Catalog: Package,
+  Store: Store,
+  Vendors: Store,
+  Dispatch: Bike,
   Accounts: Users,
   Settings,
 };
@@ -168,7 +173,7 @@ export function Sidebar({ links, profile }: SidebarProps) {
             ) : (
               <button
                 onClick={signOut}
-                className="group flex w-full items-center gap-2.5 rounded-lg border border-(--color-sidebar-border) bg-(--color-sidebar-item-hover)/40 px-3 py-2 text-sm font-medium text-(--color-muted-foreground) transition-colors hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                className="group flex w-full items-center gap-2.5 rounded-lg border border-(--color-sidebar-border) bg-sidebar-item-hover/40 px-3 py-2 text-sm font-medium text-(--color-muted-foreground) transition-colors hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
               >
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span>Sign out</span>
@@ -180,7 +185,7 @@ export function Sidebar({ links, profile }: SidebarProps) {
         {/* Collapse toggle: floating handle on the sidebar edge */}
         <button
           onClick={toggle}
-          className="absolute top-6 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-(--color-sidebar-border) bg-(--color-sidebar-bg) text-(--color-foreground) shadow-md transition-all hover:scale-110 hover:border-(--color-primary)/40 hover:text-(--color-primary)"
+          className="absolute top-6 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-(--color-sidebar-border) bg-(--color-sidebar-bg) text-(--color-foreground) shadow-md transition-all hover:scale-110 hover:border-primary/40 hover:text-(--color-primary)"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (

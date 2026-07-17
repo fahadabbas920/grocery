@@ -6,16 +6,17 @@ import {
   ORDER_STATUS_TRANSITIONS,
   REALTIME,
   ORDER_STATUS_LABELS,
+  formatOrderCode,
   type OrderStatus,
 } from "@grocery/shared";
 import { toast } from "sonner";
 import {
   Check,
-  ChevronDown,
   Clock,
   MapPin,
   Phone,
   ShoppingBag,
+  Store,
   User,
   UserCheck,
   Zap,
@@ -32,11 +33,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+// A per-shop child order (store_orders) as shown on the board.
 interface OrderRow {
   id: string;
   status: OrderStatus;
-  total: number;
+  subtotal: number;
   address: string;
+  storeName: string | null;
   rider_id: string | null;
   created_at: string;
 }
@@ -50,16 +53,17 @@ interface Rider {
 type TabFilter = "all" | "active" | "delivered" | "cancelled";
 
 /**
- * Normalize a raw `orders` row from a realtime payload. PostgREST delivers
- * `numeric` columns (like `total`) as strings, so they must be coerced or the
- * money math downstream silently turns into string concatenation.
+ * Normalize a raw `store_orders` row from a realtime payload. PostgREST delivers
+ * `numeric` (subtotal) as a string. Joined fields (address, store name) aren't in the
+ * raw payload — merged rows preserve them; freshly-inserted rows show them after refresh.
  */
 function normalizeOrder(raw: Record<string, unknown>): OrderRow {
   return {
     id: raw.id as string,
     status: raw.status as OrderStatus,
-    total: Number(raw.total),
-    address: raw.address as string,
+    subtotal: Number(raw.subtotal),
+    address: "",
+    storeName: null,
     rider_id: (raw.rider_id as string | null) ?? null,
     created_at: raw.created_at as string,
   };
@@ -96,9 +100,11 @@ function StatCard({
 }
 
 export function OrdersBoard({
+  admin,
   initialOrders,
   riders,
 }: {
+  admin: boolean;
   initialOrders: OrderRow[];
   riders: Rider[];
 }) {
@@ -108,8 +114,6 @@ export function OrdersBoard({
   const [riderDialogOrderId, setRiderDialogOrderId] = useState<string | null>(null);
   const supabase = getBrowserSupabase();
 
-  // Per-operation in-flight tracking so concurrent mutations on different orders
-  // don't clear each other's "saving" state.
   const isMutating = (key: string) => mutating.has(key);
   const beginMutating = (key: string) => setMutating((s) => new Set(s).add(key));
   const endMutating = (key: string) =>
@@ -120,32 +124,42 @@ export function OrdersBoard({
     });
 
   useEffect(() => {
+    // Subscribe to the per-shop child orders. RLS scopes a vendor to their own store.
     const channel = supabase
       .channel(REALTIME.ordersChannel)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
-        setOrders((prev) => {
-          if (payload.eventType === "DELETE") {
-            const removed = payload.old as { id: string };
-            return prev.filter((o) => o.id !== removed.id);
-          }
-          const row = normalizeOrder(payload.new);
-          if (payload.eventType === "INSERT") return [row, ...prev];
-          return prev.map((o) => (o.id === row.id ? { ...o, ...row } : o));
-        });
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "store_orders" },
+        (payload) => {
+          setOrders((prev) => {
+            if (payload.eventType === "DELETE") {
+              const removed = payload.old as { id: string };
+              return prev.filter((o) => o.id !== removed.id);
+            }
+            const row = normalizeOrder(payload.new);
+            if (payload.eventType === "INSERT") return [row, ...prev];
+            // UPDATE: merge only the mutable fields; keep joined address/storeName.
+            return prev.map((o) =>
+              o.id === row.id
+                ? { ...o, status: row.status, subtotal: row.subtotal, rider_id: row.rider_id }
+                : o,
+            );
+          });
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [supabase]);
 
-  async function assignRider(orderId: string, riderId: string) {
-    const key = `rider:${orderId}`;
+  async function assignRider(storeOrderId: string, riderId: string) {
+    const key = `rider:${storeOrderId}`;
     if (isMutating(key)) return;
     beginMutating(key);
     setRiderDialogOrderId(null);
     try {
-      await assignRiderDb(supabase, orderId, riderId);
+      await assignRiderDb(supabase, storeOrderId, riderId);
       const rider = riders.find((r) => r.id === riderId);
       toast.success(`${rider?.full_name ?? "Rider"} assigned`);
     } catch {
@@ -155,12 +169,12 @@ export function OrdersBoard({
     }
   }
 
-  async function advanceStatus(orderId: string, next: OrderStatus) {
-    const key = `status:${orderId}:${next}`;
+  async function advanceStatus(storeOrderId: string, next: OrderStatus) {
+    const key = `status:${storeOrderId}:${next}`;
     if (isMutating(key)) return;
     beginMutating(key);
     try {
-      await updateOrderStatus(supabase, orderId, next);
+      await updateOrderStatus(supabase, storeOrderId, next);
       toast.success(`Order → ${ORDER_STATUS_LABELS[next]}`);
     } catch {
       toast.error("Failed to update order");
@@ -172,7 +186,9 @@ export function OrdersBoard({
   const activeOrders = orders.filter((o) =>
     ["placed", "preparing", "on_the_way"].includes(o.status),
   );
-  const revenue = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + o.total, 0);
+  const revenue = orders
+    .filter((o) => o.status === "delivered")
+    .reduce((s, o) => s + o.subtotal, 0);
 
   const filtered = orders.filter((o) => {
     if (tab === "active") return ["placed", "preparing", "on_the_way"].includes(o.status);
@@ -185,7 +201,7 @@ export function OrdersBoard({
     <div className="space-y-5">
       {/* Stats row */}
       <div className="flex gap-3">
-        <StatCard label="Total Orders" value={orders.length} color="var(--color-foreground)" />
+        <StatCard label="Orders" value={orders.length} color="var(--color-foreground)" />
         <StatCard
           label="Active"
           value={activeOrders.length}
@@ -250,7 +266,6 @@ export function OrdersBoard({
                   key={order.id}
                   className={`group relative overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-card) shadow-sm transition-shadow hover:shadow-md ${statusCfg.cardBg}`}
                 >
-                  {/* Left accent bar */}
                   <div
                     className="absolute inset-y-0 left-0 w-1 rounded-l-2xl"
                     style={{ backgroundColor: statusCfg.hex }}
@@ -269,20 +284,29 @@ export function OrdersBoard({
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-sm font-semibold text-(--color-foreground)">
-                              #{order.id.slice(0, 8).toUpperCase()}
+                              #{formatOrderCode(order.id)}
                             </span>
                             <OrderStatusBadge status={order.status} />
                           </div>
-                          <div className="mt-0.5 flex items-center gap-1 text-xs text-(--color-muted-foreground)">
-                            <Clock className="h-3 w-3" />
-                            {timeAgo(order.created_at)}
+                          <div className="mt-0.5 flex items-center gap-2 text-xs text-(--color-muted-foreground)">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {timeAgo(order.created_at)}
+                            </span>
+                            {/* Admin sees which shop the order belongs to. */}
+                            {admin && order.storeName && (
+                              <span className="flex items-center gap-1">
+                                <Store className="h-3 w-3" />
+                                {order.storeName}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right">
                         <p className="text-lg font-bold text-(--color-foreground)">
-                          PKR {order.total.toLocaleString()}
+                          PKR {order.subtotal.toLocaleString()}
                         </p>
                         {assignedRider && (
                           <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-(--color-muted-foreground)">
@@ -294,35 +318,53 @@ export function OrdersBoard({
                     </div>
 
                     {/* Address */}
-                    <div className="mt-3 flex items-start gap-1.5 px-4">
-                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--color-muted-foreground)" />
-                      <p className="text-sm text-(--color-foreground) line-clamp-1">
-                        {order.address}
-                      </p>
-                    </div>
+                    {order.address && (
+                      <div className="mt-3 flex items-start gap-1.5 px-4">
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--color-muted-foreground)" />
+                        <p className="text-sm text-(--color-foreground) line-clamp-1">
+                          {order.address}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Actions row */}
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 bg-card/60 px-4 py-3">
-                      {/* Rider assign button */}
-                      <button
-                        disabled={
-                          order.status === "cancelled" ||
-                          order.status === "delivered" ||
-                          isMutating(`rider:${order.id}`)
-                        }
-                        onClick={() => setRiderDialogOrderId(order.id)}
-                        className="flex h-8 items-center gap-1.5 rounded-lg border border-(--color-border) bg-(--color-background) px-3 text-sm text-(--color-foreground) transition-colors hover:bg-(--color-muted) disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        {assignedRider ? (
-                          <UserCheck className="h-3.5 w-3.5 text-success" />
-                        ) : (
-                          <User className="h-3.5 w-3.5 text-(--color-muted-foreground)" />
-                        )}
-                        <span className="max-w-32 truncate">
-                          {assignedRider ? assignedRider.full_name : "Assign rider"}
+                      {/* Rider assignment — central dispatch (admin only). Vendors see the
+                          assigned rider read-only in the card header above. */}
+                      {admin ? (
+                        <button
+                          disabled={
+                            order.status === "cancelled" ||
+                            order.status === "delivered" ||
+                            isMutating(`rider:${order.id}`)
+                          }
+                          onClick={() => setRiderDialogOrderId(order.id)}
+                          className="flex h-8 items-center gap-1.5 rounded-lg border border-(--color-border) bg-(--color-background) px-3 text-sm text-(--color-foreground) transition-colors hover:bg-(--color-muted) disabled:pointer-events-none disabled:opacity-50"
+                        >
+                          {assignedRider ? (
+                            <UserCheck className="h-3.5 w-3.5 text-success" />
+                          ) : (
+                            <User className="h-3.5 w-3.5 text-(--color-muted-foreground)" />
+                          )}
+                          <span className="max-w-32 truncate">
+                            {assignedRider ? assignedRider.full_name : "Assign rider"}
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="flex h-8 items-center gap-1.5 rounded-lg px-1 text-sm text-(--color-muted-foreground)">
+                          {assignedRider ? (
+                            <>
+                              <UserCheck className="h-3.5 w-3.5 text-success" />
+                              <span className="max-w-32 truncate">{assignedRider.full_name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <User className="h-3.5 w-3.5" />
+                              <span>Awaiting rider</span>
+                            </>
+                          )}
                         </span>
-                        {/* <ChevronDown className="h-3 w-3 text-(--color-muted-foreground)" /> */}
-                      </button>
+                      )}
 
                       <div className="flex items-center gap-1.5 ml-auto">
                         {nextStatuses.map((status) => {
@@ -351,90 +393,87 @@ export function OrdersBoard({
         )}
       </ScrollArea>
 
-      {/* Rider picker dialog */}
-      {(() => {
-        const dialogOrder = riderDialogOrderId
-          ? orders.find((o) => o.id === riderDialogOrderId)
-          : null;
-        return (
-          <Dialog
-            open={!!riderDialogOrderId}
-            onOpenChange={(open) => !open && setRiderDialogOrderId(null)}
-          >
-            <DialogContent className="max-w-3xl rounded-2xl p-0 overflow-hidden">
-              <DialogHeader className="px-5 pt-5 pb-3 border-b border-(--color-border)">
-                <DialogTitle className="text-base">Assign rider</DialogTitle>
-                {dialogOrder && (
-                  <DialogDescription className="text-xs">
-                    Order #{dialogOrder.id.slice(0, 8).toUpperCase()} · PKR{" "}
-                    {dialogOrder.total.toLocaleString()}
-                  </DialogDescription>
-                )}
-              </DialogHeader>
+      {/* Rider picker dialog (admin only) */}
+      {admin &&
+        (() => {
+          const dialogOrder = riderDialogOrderId
+            ? orders.find((o) => o.id === riderDialogOrderId)
+            : null;
+          return (
+            <Dialog
+              open={!!riderDialogOrderId}
+              onOpenChange={(open) => !open && setRiderDialogOrderId(null)}
+            >
+              <DialogContent className="max-w-3xl rounded-2xl p-0 overflow-hidden">
+                <DialogHeader className="px-5 pt-5 pb-3 border-b border-(--color-border)">
+                  <DialogTitle className="text-base">Assign rider</DialogTitle>
+                  {dialogOrder && (
+                    <DialogDescription className="text-xs">
+                      Order #{formatOrderCode(dialogOrder.id)} · PKR{" "}
+                      {dialogOrder.subtotal.toLocaleString()}
+                    </DialogDescription>
+                  )}
+                </DialogHeader>
 
-              <div className="flex flex-col gap-1.5 p-3 max-h-80 min-h-32 overflow-y-auto">
-                {riders.length === 0 && (
-                  <p className="py-6 text-center text-sm text-(--color-muted-foreground)">
-                    No riders available.
-                  </p>
-                )}
-                {riders.map((rider) => {
-                  const isAssigned = dialogOrder?.rider_id === rider.id;
-                  const initials = rider.full_name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")
-                    .toUpperCase();
-                  return (
-                    <button
-                      key={rider.id}
-                      onClick={() =>
-                        riderDialogOrderId && assignRider(riderDialogOrderId, rider.id)
-                      }
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                        isAssigned
-                          ? "bg-success/10 border border-success/30"
-                          : "hover:bg-(--color-muted) border border-transparent"
-                      }`}
-                    >
-                      {/* Avatar */}
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                <div className="flex flex-col gap-1.5 p-3 max-h-80 min-h-32 overflow-y-auto">
+                  {riders.length === 0 && (
+                    <p className="py-6 text-center text-sm text-(--color-muted-foreground)">
+                      No riders available.
+                    </p>
+                  )}
+                  {riders.map((rider) => {
+                    const isAssigned = dialogOrder?.rider_id === rider.id;
+                    const initials = rider.full_name
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((w) => w[0])
+                      .join("")
+                      .toUpperCase();
+                    return (
+                      <button
+                        key={rider.id}
+                        onClick={() =>
+                          riderDialogOrderId && assignRider(riderDialogOrderId, rider.id)
+                        }
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                           isAssigned
-                            ? "bg-success text-(--color-success-foreground)"
-                            : "bg-(--color-muted) text-(--color-foreground)"
+                            ? "bg-success/10 border border-success/30"
+                            : "hover:bg-(--color-muted) border border-transparent"
                         }`}
                       >
-                        {initials}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`font-medium text-sm ${isAssigned ? "text-success" : "text-(--color-foreground)"}`}
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                            isAssigned
+                              ? "bg-success text-(--color-success-foreground)"
+                              : "bg-(--color-muted) text-(--color-foreground)"
+                          }`}
                         >
-                          {rider.full_name}
-                        </p>
-                        {rider.phone && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <Phone className="h-3 w-3 text-(--color-muted-foreground)" />
-                            <span className="text-xs text-(--color-muted-foreground)">
-                              {rider.phone}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {isAssigned && <Check className="h-4 w-4 shrink-0 text-success" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`font-medium text-sm ${isAssigned ? "text-success" : "text-(--color-foreground)"}`}
+                          >
+                            {rider.full_name}
+                          </p>
+                          {rider.phone && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Phone className="h-3 w-3 text-(--color-muted-foreground)" />
+                              <span className="text-xs text-(--color-muted-foreground)">
+                                {rider.phone}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {isAssigned && <Check className="h-4 w-4 shrink-0 text-success" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
     </div>
   );
 }

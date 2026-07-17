@@ -32,8 +32,8 @@ export default function OrderHistoryScreen() {
       const mapped = rows.map((o) => ({
         id: o.id,
         status: o.status,
-        total: Number(o.total),
-        address: o.address,
+        total: Number(o.subtotal),
+        address: o.order?.address ?? "",
         itemCount: o.items?.length ?? 0,
         createdAt: o.created_at,
       }));

@@ -41,7 +41,7 @@ export default function LoginScreen() {
             <View style={styles.logoCircle}>
               <Ionicons name="bicycle" size={40} color={colors.white} />
             </View>
-            <Text style={styles.appName}>Grocery Rider</Text>
+            <Text style={styles.appName}>BasketBee Rider</Text>
             <Text style={styles.tagline}>Deliver with confidence</Text>
           </View>
 

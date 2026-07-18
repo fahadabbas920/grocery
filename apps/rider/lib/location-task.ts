@@ -71,7 +71,7 @@ export async function startLocationSharing(): Promise<boolean> {
     timeInterval: RIDER_GPS_THROTTLE_MS,
     distanceInterval: 25,
     foregroundService: {
-      notificationTitle: "Grocery Rider",
+      notificationTitle: "BasketBee Rider",
       notificationBody: "Sharing your location for live delivery tracking.",
     },
   });

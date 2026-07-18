@@ -16,3 +16,4 @@ export * from "./components/sheet";
 export * from "./components/form-drawer";
 export * from "./components/dialog";
 export * from "./components/toaster";
+export * from "./components/logo";

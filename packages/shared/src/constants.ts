@@ -38,7 +38,10 @@ export const RIDER_GPS_THROTTLE_MS = 10_000;
  * the PWA manifest/theme-color and non-CSS map SDK marker colors. Keep in sync
  * with `--primary` in packages/ui/src/styles/globals.css.
  */
-export const BRAND_GREEN_HEX = "#16a34a";
+export const BRAND_GREEN_HEX = "#2E7D32";
+
+/** BasketBee honey yellow, for contexts that can't use CSS tokens. */
+export const BRAND_YELLOW_HEX = "#FFC107";
 
 /** Keys for the `app_settings` table (runtime feature flags). */
 export const SETTING_KEYS = {

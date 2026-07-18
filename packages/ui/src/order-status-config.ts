@@ -20,12 +20,12 @@ export interface OrderStatusStyle {
 
 export const ORDER_STATUS_CONFIG: Record<OrderStatus, OrderStatusStyle> = {
   placed: {
-    hex: "#f59e0b",
-    cardBg: "bg-amber-50",
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
-    dot: "bg-amber-500",
-    iconBg: "bg-amber-100 text-amber-600",
-    gradient: "from-amber-500 to-orange-400",
+    hex: "#FFC107",
+    cardBg: "bg-yellow-50",
+    badge: "bg-yellow-50 text-yellow-800 border-yellow-300",
+    dot: "bg-yellow-400",
+    iconBg: "bg-yellow-100 text-yellow-700",
+    gradient: "from-yellow-500 to-amber-400",
     icon: Clock,
   },
   preparing: {
@@ -47,7 +47,7 @@ export const ORDER_STATUS_CONFIG: Record<OrderStatus, OrderStatusStyle> = {
     icon: Bike,
   },
   delivered: {
-    hex: "#16a34a",
+    hex: "#2E7D32",
     cardBg: "bg-green-50",
     badge: "bg-green-50 text-green-700 border-green-200",
     dot: "bg-green-500",

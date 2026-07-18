@@ -92,7 +92,7 @@ export function ProductCard({
                   e.stopPropagation();
                   onAdd();
                 }}
-                className="flex h-7 items-center gap-1 rounded-lg bg-(--color-primary) px-2.5 text-xs font-semibold text-(--color-primary-foreground) transition-colors hover:opacity-90"
+                className="flex h-7 items-center gap-1 rounded-lg bg-(--color-brand-yellow) px-2.5 text-xs font-semibold text-(--color-foreground) transition-colors hover:opacity-90"
               >
                 + Add
               </button>

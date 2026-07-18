@@ -1,3 +1,4 @@
+import { Logo } from "@grocery/ui";
 import { LoginForm } from "@/components/login-form";
 
 export default function LoginPage() {
@@ -5,11 +6,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen">
       {/* Left panel — brand (desktop only) */}
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gap-6 bg-linear-to-br from-primary to-primary/70 p-12 text-(--color-primary-foreground)">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-3xl font-black text-white">
-          G
-        </div>
+        <Logo variant="vertical" className="h-64 w-64" />
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Grocery Ops</h1>
+          <h1 className="text-3xl font-bold tracking-tight">BasketBee Ops</h1>
           <p className="mt-2 text-white/70 text-sm">
             Manage orders, catalog and riders
             <br />
@@ -32,11 +31,8 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center bg-(--color-background) p-8">
         <div className="w-full max-w-sm">
           {/* Mobile brand */}
-          <div className="mb-8 lg:hidden flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-primary) text-sm font-bold text-white">
-              G
-            </div>
-            <span className="text-lg font-semibold">Grocery Ops</span>
+          <div className="mb-8 lg:hidden">
+            <Logo variant="horizontal" className="h-10" />
           </div>
 
           <h2 className="text-2xl font-bold text-(--color-foreground)">Welcome back</h2>

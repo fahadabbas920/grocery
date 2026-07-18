@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Logo } from "@grocery/ui";
 import { AuthForm } from "@/components/auth-form";
 
 export default function LoginPage() {
@@ -6,9 +7,7 @@ export default function LoginPage() {
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-(--color-primary) text-2xl font-black text-white shadow-lg">
-            G
-          </div>
+          <Logo variant="vertical" className="h-40 w-40" />
           <div className="text-center">
             <h1 className="text-xl font-bold text-(--color-foreground)">Welcome back</h1>
             <p className="mt-0.5 text-sm text-(--color-muted-foreground)">

@@ -186,7 +186,7 @@ export function CatalogGrid({
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <StatsCard
           className="flex-1 rounded-2xl p-4"
           label="Total Products"

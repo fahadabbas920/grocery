@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getBrowserSupabase } from "@/lib/supabase/client";
+import { signOut } from "@/lib/sign-out";
+import type { NavLink } from "@/components/nav-list";
 import type { UserRole } from "@grocery/shared";
 
 const ICONS: Record<string, React.ElementType> = {
@@ -31,17 +32,12 @@ const ICONS: Record<string, React.ElementType> = {
   Settings,
 };
 
-interface NavLink {
-  href: string;
-  label: string;
-  roles: UserRole[];
-}
-
 interface SidebarProps {
   links: NavLink[];
   profile: { full_name: string | null; role: UserRole };
 }
 
+/** Persistent desktop nav. Hidden below `md`; MobileNav covers small screens. */
 export function Sidebar({ links, profile }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -60,12 +56,6 @@ export function Sidebar({ links, profile }: SidebarProps) {
     localStorage.setItem("ops.sidebar.collapsed", String(next));
   }
 
-  async function signOut() {
-    const supabase = getBrowserSupabase();
-    await supabase.auth.signOut();
-    router.push("/login");
-  }
-
   const initials = profile.full_name
     ? profile.full_name
         .split(" ")
@@ -77,7 +67,7 @@ export function Sidebar({ links, profile }: SidebarProps) {
 
   if (!mounted) {
     return (
-      <aside className="flex w-56 shrink-0 border-r border-(--color-sidebar-border) bg-(--color-sidebar-bg)" />
+      <aside className="hidden w-56 shrink-0 border-r border-(--color-sidebar-border) bg-(--color-sidebar-bg) md:flex" />
     );
   }
 
@@ -85,7 +75,7 @@ export function Sidebar({ links, profile }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "relative flex flex-col border-r border-(--color-sidebar-border) bg-(--color-sidebar-bg) shrink-0",
+          "relative hidden shrink-0 border-r border-(--color-sidebar-border) bg-(--color-sidebar-bg) md:flex md:flex-col",
           "transition-[width] duration-200 ease-in-out",
           collapsed ? "w-16" : "w-56",
         )}
@@ -162,7 +152,7 @@ export function Sidebar({ links, profile }: SidebarProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={signOut}
+                    onClick={() => signOut(router)}
                     className="flex w-full items-center justify-center rounded-lg border border-transparent p-2.5 text-(--color-muted-foreground) transition-colors hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
                   >
                     <LogOut className="h-4 w-4" />
@@ -172,7 +162,7 @@ export function Sidebar({ links, profile }: SidebarProps) {
               </Tooltip>
             ) : (
               <button
-                onClick={signOut}
+                onClick={() => signOut(router)}
                 className="group flex w-full items-center gap-2.5 rounded-lg border border-(--color-sidebar-border) bg-sidebar-item-hover/40 px-3 py-2 text-sm font-medium text-(--color-muted-foreground) transition-colors hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
               >
                 <LogOut className="h-4 w-4 shrink-0" />

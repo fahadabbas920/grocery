@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@grocery/ui";
-import { isMapsEnabled } from "@grocery/db/queries";
+import { getMapsConfig } from "@grocery/db/queries";
 import { requireOpsProfile } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { MapsToggle } from "@/components/maps-toggle";
@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   if (profile.role !== "admin") redirect("/");
 
   const supabase = await getServerSupabase();
-  const mapsEnabled = await isMapsEnabled(supabase);
+  const mapsConfig = await getMapsConfig(supabase);
 
   return (
     <div>
@@ -26,7 +26,11 @@ export default async function SettingsPage() {
         </div>
         <Separator />
         <div className="p-5">
-          <MapsToggle initialEnabled={mapsEnabled} />
+          <MapsToggle
+            initialEnabled={mapsConfig.enabled}
+            initialProvider={mapsConfig.provider}
+            initialPublicToken={mapsConfig.publicToken}
+          />
         </div>
       </div>
     </div>

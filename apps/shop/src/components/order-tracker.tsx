@@ -9,6 +9,7 @@ import {
   ORDER_STATUS_SUBTITLES,
   REALTIME,
   formatOrderCode,
+  type MapProvider,
   type OrderStatus,
 } from "@grocery/shared";
 import { ORDER_STATUS_CONFIG, OrderStatusBadge } from "@grocery/ui";
@@ -44,24 +45,27 @@ function deriveOverall(children: ChildOrder[]): OrderStatus {
 }
 
 /**
- * RiderMap — shows the live rider location. Provider priority:
- *   1. Mapbox  (NEXT_PUBLIC_MAPBOX_TOKEN)
- *   2. Google  (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY iframe)
+ * RiderMap — shows the live rider location, using the public rendering token
+ * from `app_settings.maps_public_token` (via the `mapsConfig` prop). Never a
+ * build-time env var — ops can rotate this from the Settings page.
  */
-function RiderMap({ pos }: { pos: RiderPos }) {
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-  const googleKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  if (mapboxToken) {
-    return <MapboxRiderMap token={mapboxToken} pos={pos} />;
+function RiderMap({
+  pos,
+  mapsConfig,
+}: {
+  pos: RiderPos;
+  mapsConfig: { provider: MapProvider; publicToken: string | null };
+}) {
+  if (mapsConfig.provider === "mapbox" && mapsConfig.publicToken) {
+    return <MapboxRiderMap token={mapsConfig.publicToken} pos={pos} />;
   }
-  if (googleKey) {
+  if (mapsConfig.provider === "google" && mapsConfig.publicToken) {
     return (
       <iframe
         title="Rider location"
         className="h-64 w-full"
         loading="lazy"
-        src={`https://www.google.com/maps/embed/v1/view?key=${googleKey}&center=${pos.lat},${pos.lng}&zoom=15`}
+        src={`https://www.google.com/maps/embed/v1/view?key=${mapsConfig.publicToken}&center=${pos.lat},${pos.lng}&zoom=15`}
       />
     );
   }
@@ -182,20 +186,18 @@ export function OrderTracker({
   initialChildren,
   total,
   address,
-  mapsEnabled,
+  mapsConfig,
 }: {
   orderId: string;
   initialChildren: ChildOrder[];
   total: number;
   address: string;
-  mapsEnabled: boolean;
+  mapsConfig: { enabled: boolean; provider: MapProvider; publicToken: string | null };
 }) {
   const [children, setChildren] = useState<ChildOrder[]>(initialChildren);
   const [riderPos, setRiderPos] = useState<Record<string, RiderPos>>({});
   const mapsAvailable =
-    mapsEnabled &&
-    (Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN) ||
-      Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY));
+    mapsConfig.enabled && mapsConfig.provider !== "none" && !!mapsConfig.publicToken;
 
   const status = deriveOverall(children);
   const cfg = ORDER_STATUS_CONFIG[status];
@@ -347,7 +349,7 @@ export function OrderTracker({
                 </p>
               </div>
               {mapsAvailable && pos ? (
-                <RiderMap pos={pos} />
+                <RiderMap pos={pos} mapsConfig={mapsConfig} />
               ) : (
                 <div className="bg-muted/40 p-4 text-center">
                   <p className="text-sm text-(--color-muted-foreground)">

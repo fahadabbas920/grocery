@@ -46,7 +46,18 @@ export const BRAND_YELLOW_HEX = "#FFC107";
 /** Keys for the `app_settings` table (runtime feature flags). */
 export const SETTING_KEYS = {
   mapsEnabled: "maps_enabled",
+  mapsProvider: "maps_provider",
+  mapsPublicToken: "maps_public_token",
 } as const;
+
+/**
+ * Map providers the platform can render with. The value stored under
+ * `maps_provider` is only ever the RENDERING token's provider — geocoding
+ * always goes through the `maps-proxy` Edge Function, which holds its own
+ * secret key per provider (never exposed to the client).
+ */
+export const MAP_PROVIDERS = ["none", "mapbox", "google"] as const;
+export type MapProvider = (typeof MAP_PROVIDERS)[number];
 
 /** Default Supabase Storage image transform for catalog thumbnails. */
 export const PRODUCT_IMAGE_TRANSFORM = {

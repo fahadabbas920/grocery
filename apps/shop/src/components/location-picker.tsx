@@ -3,15 +3,23 @@
 /**
  * LocationPicker — delivery address picker as a bottom-sheet modal.
  *
+ * Rendering (map tiles/pin) uses the public, domain-restricted token from
+ * `app_settings.maps_public_token` (via the `mapsConfig` prop) — safe to
+ * expose client-side. Search/reverse-geocode never touch the provider
+ * directly; they go through the `maps-proxy` Edge Function, which holds its
+ * own secret key server-side.
+ *
  * Provider priority:
- *   1. Mapbox  (NEXT_PUBLIC_MAPBOX_TOKEN)
- *   2. Plain textarea fallback
+ *   1. Mapbox (interactive map + search)
+ *   2. Plain textarea fallback (no provider configured, or Google — no
+ *      interactive picker built for it yet)
  */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Drawer } from "vaul";
 import { MapPin, Search, X, Navigation, Loader2, ChevronRight, AlertCircle } from "lucide-react";
-import { BRAND_GREEN_HEX } from "@grocery/shared";
+import { BRAND_GREEN_HEX, type MapProvider } from "@grocery/shared";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export interface PickedLocation {
   lat: number;
@@ -52,21 +60,7 @@ function getBrowserLocation(): Promise<
   });
 }
 
-// ─── Mapbox geocoding helpers ─────────────────────────────────────────────────
-
-async function mapboxReverseGeocode(lat: number, lng: number, token: string): Promise<string> {
-  try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
-        `?access_token=${token}&types=address,place,neighborhood,locality&limit=1&language=en`,
-    );
-    if (!res.ok) return "";
-    const json = await res.json();
-    return json.features?.[0]?.place_name ?? "";
-  } catch {
-    return "";
-  }
-}
+// ─── Geocoding via the maps-proxy Edge Function (no provider key in the browser) ──
 
 interface SearchResult {
   id: string;
@@ -74,16 +68,26 @@ interface SearchResult {
   center: [number, number];
 }
 
-async function mapboxForwardGeocode(query: string, token: string): Promise<SearchResult[]> {
+async function proxyReverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    const { data, error } = await getBrowserSupabase().functions.invoke("maps-proxy", {
+      body: { action: "reverseGeocode", lat, lng },
+    });
+    if (error) return "";
+    return data?.address ?? "";
+  } catch {
+    return "";
+  }
+}
+
+async function proxyForwardGeocode(query: string): Promise<SearchResult[]> {
   if (query.trim().length < 2) return [];
   try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
-        `?access_token=${token}&country=PK&limit=5&language=en`,
-    );
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.features ?? [];
+    const { data, error } = await getBrowserSupabase().functions.invoke("maps-proxy", {
+      body: { action: "geocode", query },
+    });
+    if (error) return [];
+    return data?.results ?? [];
   } catch {
     return [];
   }
@@ -184,7 +188,7 @@ function LocationModal({
 
   async function reverseGeocode(lat: number, lng: number) {
     setGeocoding(true);
-    const addr = await mapboxReverseGeocode(lat, lng, token);
+    const addr = await proxyReverseGeocode(lat, lng);
     setAddress(addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     setGeocoding(false);
   }
@@ -230,7 +234,7 @@ function LocationModal({
     }
     setSearching(true);
     searchDebounce.current = setTimeout(async () => {
-      const results = await mapboxForwardGeocode(q, token);
+      const results = await proxyForwardGeocode(q);
       setSearchResults(results);
       setSearching(false);
     }, 400);
@@ -383,6 +387,8 @@ interface LocationPickerProps {
   address: string;
   lat?: number;
   lng?: number;
+  /** Runtime map config from `app_settings` — never a build-time env var. */
+  mapsConfig: { provider: MapProvider; publicToken: string | null };
 }
 
 export function LocationPicker({
@@ -390,9 +396,10 @@ export function LocationPicker({
   address,
   lat = 0,
   lng = 0,
+  mapsConfig,
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false);
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const mapboxToken = mapsConfig.provider === "mapbox" ? mapsConfig.publicToken : null;
 
   const callbackRef = useRef(onLocationChange);
   useEffect(() => {

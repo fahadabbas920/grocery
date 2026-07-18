@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Menu, LogOut } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@grocery/ui";
+import { Logo, Sheet, SheetContent, SheetHeader, SheetTitle } from "@grocery/ui";
 import { NavList, type NavLink } from "@/components/nav-list";
 import { signOut } from "@/lib/sign-out";
 import type { UserRole } from "@grocery/shared";
@@ -17,15 +17,6 @@ export function MobileNav({ links, profile }: MobileNavProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  const initials = profile.full_name
-    ? profile.full_name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : profile.role.slice(0, 2).toUpperCase();
-
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-(--color-sidebar-border) bg-(--color-sidebar-bg) px-4 md:hidden">
       <button
@@ -35,9 +26,7 @@ export function MobileNav({ links, profile }: MobileNavProps) {
       >
         <Menu className="h-5 w-5" />
       </button>
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-(--color-primary) text-xs font-bold text-(--color-primary-foreground)">
-        {initials}
-      </div>
+      <Logo variant="mark" className="h-7 w-7 shrink-0" />
       <span className="truncate text-sm font-semibold text-(--color-foreground)">
         {profile.full_name ?? "Ops User"}
       </span>

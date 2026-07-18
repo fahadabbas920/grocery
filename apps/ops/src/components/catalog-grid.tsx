@@ -4,18 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Edit2, Package, PackageX, Trash2 } from "lucide-react";
-import { Button, EmptyState } from "@grocery/ui";
-import { deleteProduct } from "@grocery/db/queries";
-import { toast } from "sonner";
-import { getBrowserSupabase } from "@/lib/supabase/client";
 import {
+  Button,
+  EmptyState,
+  StatsCard,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@grocery/ui";
+import { deleteProduct } from "@grocery/db/queries";
+import { toast } from "sonner";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ProductFormSheet } from "@/components/product-form-sheet";
 import type { Category } from "@/components/product-form-sheet";
 
@@ -185,24 +187,22 @@ export function CatalogGrid({
   return (
     <div className="space-y-5">
       <div className="flex gap-3">
-        <div className="flex flex-1 flex-col gap-0.5 rounded-2xl border border-(--color-border) bg-(--color-card) p-4 shadow-sm">
-          <span className="text-xs font-medium text-(--color-muted-foreground)">
-            Total Products
-          </span>
-          <span className="text-2xl font-bold text-(--color-foreground)">{products.length}</span>
-        </div>
-        <div className="flex flex-1 flex-col gap-0.5 rounded-2xl border border-(--color-border) bg-(--color-card) p-4 shadow-sm">
-          <span className="text-xs font-medium text-(--color-muted-foreground)">Categories</span>
-          <span className="text-2xl font-bold text-(--color-foreground)">{categories.length}</span>
-        </div>
-        <div className="flex flex-1 flex-col gap-0.5 rounded-2xl border border-(--color-border) bg-(--color-card) p-4 shadow-sm">
-          <span className="text-xs font-medium text-(--color-muted-foreground)">Out of Stock</span>
-          <span
-            className={`text-2xl font-bold ${outOfStockCount > 0 ? "text-destructive" : "text-success"}`}
-          >
-            {outOfStockCount}
-          </span>
-        </div>
+        <StatsCard
+          className="flex-1 rounded-2xl p-4"
+          label="Total Products"
+          value={products.length}
+        />
+        <StatsCard
+          className="flex-1 rounded-2xl p-4"
+          label="Categories"
+          value={categories.length}
+        />
+        <StatsCard
+          className="flex-1 rounded-2xl p-4"
+          label="Out of Stock"
+          value={outOfStockCount}
+          valueClassName={outOfStockCount > 0 ? "text-destructive" : "text-success"}
+        />
       </div>
 
       {products.length === 0 ? (

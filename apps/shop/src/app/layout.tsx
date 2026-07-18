@@ -5,7 +5,7 @@ import { CartProvider } from "@/lib/cart/cart-context";
 import { SearchProvider } from "@/lib/search-context";
 import { ShopHeader } from "@/components/shop-header";
 import { CartDrawer } from "@/components/cart-drawer";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@grocery/ui";
 
 export const metadata: Metadata = {
   title: "Grocery",

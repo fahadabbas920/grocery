@@ -496,6 +496,7 @@ export type Database = {
         Args: { p_store_order_id: string };
         Returns: boolean;
       };
+      rider_has_order: { Args: { p_order_id: string }; Returns: boolean };
       rider_serves_customer: { Args: { p_rider_id: string }; Returns: boolean };
       store_has_order: { Args: { p_order_id: string }; Returns: boolean };
     };

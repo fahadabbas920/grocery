@@ -23,9 +23,9 @@ interface OrderDetail {
   id: string;
   status: OrderStatus;
   total: number;
-  address: string;
-  lat: number;
-  lng: number;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
   items: { name: string; qty: number; unitPrice: number }[];
   createdAt: string;
 }
@@ -48,9 +48,9 @@ export default function OrderDetailScreen() {
         id: o.id,
         status: o.status,
         total: Number(o.subtotal),
-        address: o.order?.address ?? "",
-        lat: o.order?.delivery_lat ?? 0,
-        lng: o.order?.delivery_lng ?? 0,
+        address: o.order?.address ?? null,
+        lat: o.order?.delivery_lat ?? null,
+        lng: o.order?.delivery_lng ?? null,
         items: (o.items ?? []).map((i) => ({
           name: i.product?.name ?? "Product",
           qty: i.quantity,
@@ -117,7 +117,10 @@ export default function OrderDetailScreen() {
   const canDeliver = order.status === "on_the_way";
 
   async function openMaps() {
-    if (!order) return;
+    if (!order || order.lat == null || order.lng == null) {
+      Alert.alert("No location", "This order doesn't have delivery coordinates yet.");
+      return;
+    }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}`;
     try {
       const supported = await Linking.canOpenURL(url);
@@ -172,9 +175,16 @@ export default function OrderDetailScreen() {
         <Text style={styles.sectionLabel}>Delivery address</Text>
         <Card style={styles.addressCard} padding={14}>
           <Ionicons name="location" size={18} color={colors.brand} />
-          <Text style={styles.addressText}>{order.address}</Text>
+          <Text style={styles.addressText}>{order.address ?? "Address unavailable"}</Text>
         </Card>
-        <TouchableOpacity style={styles.mapsBtn} onPress={openMaps} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[
+            styles.mapsBtn,
+            (order.lat == null || order.lng == null) && styles.mapsBtnDisabled,
+          ]}
+          onPress={openMaps}
+          activeOpacity={0.85}
+        >
           <Ionicons name="navigate-outline" size={16} color={colors.white} />
           <Text style={styles.mapsBtnText}>Open in Google Maps</Text>
         </TouchableOpacity>
@@ -260,6 +270,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   mapsBtnText: { color: colors.white, fontWeight: "600", fontSize: fontSize.base },
+  mapsBtnDisabled: { opacity: 0.5 },
   itemsCard: { overflow: "hidden" },
   itemRow: {
     flexDirection: "row",

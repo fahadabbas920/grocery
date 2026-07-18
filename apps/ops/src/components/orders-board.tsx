@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, OrderStatusBadge, EmptyState, ORDER_STATUS_CONFIG } from "@grocery/ui";
+import {
+  Button,
+  OrderStatusBadge,
+  EmptyState,
+  ORDER_STATUS_CONFIG,
+  StatsCard,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@grocery/ui";
 import {
   ORDER_STATUS_TRANSITIONS,
   REALTIME,
@@ -25,13 +36,6 @@ import { assignRider as assignRiderDb, updateOrderStatus } from "@grocery/db/que
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@grocery/ui/components/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 
 // A per-shop child order (store_orders) as shown on the board.
 interface OrderRow {
@@ -75,28 +79,6 @@ function timeAgo(iso: string) {
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   return `${Math.floor(mins / 60)}h ago`;
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  color: string;
-}) {
-  return (
-    <div className="flex flex-1 flex-col gap-1 rounded-2xl border border-(--color-border) bg-(--color-card) p-4 shadow-sm">
-      <span className="text-xs font-medium text-(--color-muted-foreground)">{label}</span>
-      <span className="text-2xl font-bold text-(--color-foreground)" style={{ color }}>
-        {value}
-      </span>
-      {sub && <span className="text-xs text-(--color-muted-foreground)">{sub}</span>}
-    </div>
-  );
 }
 
 export function OrdersBoard({
@@ -201,18 +183,20 @@ export function OrdersBoard({
     <div className="space-y-5">
       {/* Stats row */}
       <div className="flex gap-3">
-        <StatCard label="Orders" value={orders.length} color="var(--color-foreground)" />
-        <StatCard
+        <StatsCard className="flex-1 rounded-2xl p-4" label="Orders" value={orders.length} />
+        <StatsCard
+          className="flex-1 rounded-2xl p-4"
           label="Active"
           value={activeOrders.length}
           sub="in progress"
-          color="var(--color-warning)"
+          valueClassName="text-(--color-warning)"
         />
-        <StatCard
+        <StatsCard
+          className="flex-1 rounded-2xl p-4"
           label="Revenue"
           value={`PKR ${revenue.toLocaleString()}`}
           sub="delivered only"
-          color="var(--color-success)"
+          valueClassName="text-(--color-success)"
         />
       </div>
 

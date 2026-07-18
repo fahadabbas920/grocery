@@ -11,10 +11,20 @@ interface StatsCardProps {
   value: string | number;
   icon?: ReactNode;
   trend?: Trend;
+  sub?: string;
+  valueClassName?: string;
   className?: string;
 }
 
-export function StatsCard({ label, value, icon, trend, className }: StatsCardProps) {
+export function StatsCard({
+  label,
+  value,
+  icon,
+  trend,
+  sub,
+  valueClassName,
+  className,
+}: StatsCardProps) {
   const trendPositive = trend && trend.value >= 0;
 
   return (
@@ -32,7 +42,8 @@ export function StatsCard({ label, value, icon, trend, className }: StatsCardPro
           </div>
         )}
       </div>
-      <p className="text-2xl font-bold text-(--color-foreground)">{value}</p>
+      <p className={cn("text-2xl font-bold text-(--color-foreground)", valueClassName)}>{value}</p>
+      {sub && <p className="mt-1 text-xs text-(--color-muted-foreground)">{sub}</p>}
       {trend && (
         <p
           className={`mt-1 text-xs font-medium ${trendPositive ? "text-(--color-success)" : "text-(--color-destructive)"}`}

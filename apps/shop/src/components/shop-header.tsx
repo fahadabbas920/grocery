@@ -1,33 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, ClipboardList, LogIn, LogOut } from "lucide-react";
 import { useCart } from "@/lib/cart/cart-context";
 import { useSearch } from "@/lib/search-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useUser } from "@/lib/use-user";
 
 export function ShopHeader() {
   const { count, setIsOpen } = useCart();
   useSearch(); // keep provider mounted; search input lives in CatalogBrowser
   const router = useRouter();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-
-  useEffect(() => {
-    const supabase = getBrowserSupabase();
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setUser(data.user))
-      .catch(() => {});
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  const user = useUser();
 
   async function signOut() {
     await getBrowserSupabase().auth.signOut();

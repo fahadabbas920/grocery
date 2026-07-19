@@ -2,24 +2,26 @@ import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { resolveAuthIdentifier } from "@grocery/shared";
 import { supabase } from "@/lib/supabase";
 import { Button, TextField } from "@/components";
 import { colors, fontSize, radius, shadow, spacing } from "@/theme";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function signIn() {
-    if (!email.trim() || !password) {
-      Alert.alert("Required", "Please enter your email and password.");
+    if (!identifier.trim() || !password) {
+      Alert.alert("Required", "Please enter your email/phone and password.");
       return;
     }
     setLoading(true);
     try {
+      const { authEmail } = resolveAuthIdentifier(identifier.trim());
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: authEmail,
         password,
       });
       if (error) Alert.alert("Sign in failed", error.message);
@@ -49,13 +51,12 @@ export default function LoginScreen() {
             <Text style={styles.cardTitle}>Sign in</Text>
 
             <TextField
-              label="Email"
+              label="Email or phone"
               icon="mail-outline"
-              placeholder="rider@example.com"
+              placeholder="rider@example.com or 03xx-xxxxxxx"
               autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
+              value={identifier}
+              onChangeText={setIdentifier}
             />
 
             <TextField

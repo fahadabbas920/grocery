@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { displayIdentifier, isSyntheticPhoneEmail } from "@grocery/shared";
 import { getRiderOrderHistory } from "@grocery/db/queries";
 import { supabase } from "@/lib/supabase";
 import { Button, Card, EmptyState, StatCard } from "@/components";
@@ -34,7 +35,7 @@ export default function ProfileScreen() {
     setLoading(true);
     setError(false);
     try {
-      setEmail(user.email ?? "");
+      setEmail(user.email ? displayIdentifier(user.email) : "");
       setName((user.user_metadata?.full_name as string) ?? "");
 
       const profile = await supabase
@@ -91,10 +92,12 @@ export default function ProfileScreen() {
             <Text style={styles.infoText}>{phone}</Text>
           </View>
         ) : null}
-        <View style={styles.infoRow}>
-          <Ionicons name="mail-outline" size={14} color={colors.textMuted} />
-          <Text style={styles.infoText}>{email}</Text>
-        </View>
+        {!isSyntheticPhoneEmail(user?.email ?? "") ? (
+          <View style={styles.infoRow}>
+            <Ionicons name="mail-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.infoText}>{email}</Text>
+          </View>
+        ) : null}
       </Card>
 
       {loading ? (

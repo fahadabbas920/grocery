@@ -16,9 +16,14 @@ export function getProductImageUrl(supabase: DB, imagePath: string | null): stri
   return data.publicUrl;
 }
 
+/** Supabase Storage rejects keys with spaces or other non-URL-safe characters. */
+function sanitizeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
 /** Upload a product image and return its storage path (stored on the product row). */
 export async function uploadProductImage(supabase: DB, file: File, fileName: string) {
-  const path = `${crypto.randomUUID()}-${fileName}`;
+  const path = `${crypto.randomUUID()}-${sanitizeFileName(fileName)}`;
   const { error } = await supabase.storage
     .from(STORAGE_BUCKETS.productImages)
     .upload(path, file, { cacheControl: "3600", upsert: false });

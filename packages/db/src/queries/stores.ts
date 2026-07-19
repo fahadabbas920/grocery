@@ -70,3 +70,42 @@ export async function addStoreMember(
     .insert({ store_id: storeId, user_id: userId, store_role: role });
   if (error) throw error;
 }
+
+/**
+ * Vendor owners with a login but no shop yet — stuck mid-onboarding (step 1 of
+ * createVendorUserAction done, step 2 createShopForOwnerAction never run). Surfaced
+ * on the Vendors page as a "pending" row so an admin can resume step 2.
+ */
+export async function getPendingVendorOwners(supabase: DB) {
+  const [{ data: owners, error: ownersErr }, { data: members, error: membersErr }] =
+    await Promise.all([
+      supabase.from("profiles").select("id, full_name, phone").eq("role", "stock_keeper"),
+      supabase.from("store_members").select("user_id"),
+    ]);
+  if (ownersErr) throw ownersErr;
+  if (membersErr) throw membersErr;
+
+  const memberIds = new Set((members ?? []).map((m) => m.user_id));
+  return (owners ?? []).filter((o) => !memberIds.has(o.id));
+}
+
+/** The owner linked to a store (1 vendor : 1 shop for now), or null if none is linked. */
+export async function getStoreOwner(supabase: DB, storeId: string) {
+  const { data: member, error: memberErr } = await supabase
+    .from("store_members")
+    .select("user_id")
+    .eq("store_id", storeId)
+    .eq("store_role", "owner")
+    .maybeSingle();
+  if (memberErr) throw memberErr;
+  if (!member) return null;
+
+  const { data: profile, error: profileErr } = await supabase
+    .from("profiles")
+    .select("full_name, phone")
+    .eq("id", member.user_id)
+    .maybeSingle();
+  if (profileErr) throw profileErr;
+
+  return { id: member.user_id, full_name: profile?.full_name ?? "", phone: profile?.phone ?? null };
+}

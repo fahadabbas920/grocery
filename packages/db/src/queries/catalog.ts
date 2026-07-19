@@ -60,8 +60,12 @@ export async function createProduct(
     .single();
   if (error) throw error;
 
+  // A row is auto-created by the on_product_created trigger — update it, don't insert.
   const inv = inventoryUpdateSchema.parse({ product_id: row.id, ...stock });
-  const { error: invError } = await supabase.from("inventory").insert(inv);
+  const { error: invError } = await supabase
+    .from("inventory")
+    .update({ quantity: inv.quantity, is_out_of_stock: inv.is_out_of_stock })
+    .eq("product_id", row.id);
   if (invError) throw invError;
   return row.id;
 }

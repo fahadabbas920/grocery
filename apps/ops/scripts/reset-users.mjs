@@ -19,7 +19,9 @@ const PASSWORD = process.env.SEED_PASSWORD || "Password123!";
 const USERS = [
   { email: "admin@grocery.test", role: "admin", full_name: "Platform Admin" },
   { email: "vendor@grocery.test", role: "stock_keeper", full_name: "Default Store Owner" },
-  { email: "rider@grocery.test", role: "rider", full_name: "Test Rider" },
+  // Phone-based login: auth email is synthetic (see packages/shared/src/auth.ts);
+  // sign in with the phone number, not this email.
+  { email: "923001234567@phone.internal", phone: "+923001234567", role: "rider", full_name: "Test Rider" },
   { email: "customer@grocery.test", role: "customer", full_name: "Test Customer" },
 ];
 
@@ -59,7 +61,10 @@ async function main() {
     }
     const id = data.user.id;
     // Profile row is auto-created (role 'customer') by the handle_new_user trigger; set role.
-    const { error: pErr } = await admin.from("profiles").update({ role: u.role, full_name: u.full_name }).eq("id", id);
+    const { error: pErr } = await admin
+      .from("profiles")
+      .update({ role: u.role, full_name: u.full_name, ...(u.phone ? { phone: u.phone } : {}) })
+      .eq("id", id);
     if (pErr) console.warn(`     profile: ${pErr.message}`);
     // Link the vendor to the default store.
     if (u.role === "stock_keeper" && store) {
@@ -72,6 +77,7 @@ async function main() {
   }
 
   console.log(`\nDone. All accounts use password: ${PASSWORD}`);
+  console.log(`Rider signs in with phone +923001234567 (not the .internal email).`);
 }
 
 main().catch((e) => {

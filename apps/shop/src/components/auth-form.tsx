@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { isLikelyEmail, resolveAuthIdentifier } from "@grocery/shared";
 import { Eye, EyeOff } from "lucide-react";
 
 function Field({
@@ -28,7 +29,7 @@ export function AuthForm() {
   const redirectTo = params.get("redirect") ?? "/";
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -41,31 +42,63 @@ export function AuthForm() {
     setLoading(true);
     setError(null);
     const supabase = getBrowserSupabase();
+    const trimmed = identifier.trim();
+    const { authEmail } = resolveAuthIdentifier(trimmed);
 
-    const { data, error } =
-      mode === "signin"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: fullName } },
-          });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      window.location.replace(redirectTo);
       return;
     }
 
-    // Signup with email confirmation enabled returns a user but no session.
-    // Don't redirect a session-less user — show a "check your email" state.
-    if (mode === "signup" && !data.session) {
-      setLoading(false);
-      setConfirmEmailSent(true);
+    // Signup. Real emails go through Supabase's own confirmation-link flow.
+    // Phone numbers have no SMS provider configured, so account creation +
+    // confirmation happens server-side in the phone-signup Edge Function
+    // (service-role key never reaches this app) — the client then just signs in.
+    if (isLikelyEmail(trimmed)) {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail,
+        password,
+        options: { data: { full_name: fullName } },
+      });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      // Email confirmation enabled returns a user but no session — don't
+      // redirect a session-less user, show a "check your email" state.
+      if (!data.session) {
+        setLoading(false);
+        setConfirmEmailSent(true);
+        return;
+      }
+      window.location.replace(redirectTo);
       return;
     }
 
-    // Hard navigation bypasses stale RSC cache after sign-in.
+    const { error: fnError } = await supabase.functions.invoke("phone-signup", {
+      body: { phone: trimmed, password, full_name: fullName },
+    });
+    if (fnError) {
+      setError(fnError.message);
+      setLoading(false);
+      return;
+    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password,
+    });
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
     window.location.replace(redirectTo);
   }
 
@@ -74,8 +107,8 @@ export function AuthForm() {
       <div className="rounded-xl border border-(--color-border) bg-muted/40 p-6 text-center">
         <p className="text-base font-semibold text-(--color-foreground)">Check your email</p>
         <p className="mt-2 text-sm text-(--color-muted-foreground)">
-          We sent a confirmation link to <span className="font-medium">{email}</span>. Open it to
-          finish creating your account, then sign in.
+          We sent a confirmation link to <span className="font-medium">{identifier}</span>. Open it
+          to finish creating your account, then sign in.
         </p>
         <button
           type="button"
@@ -108,13 +141,12 @@ export function AuthForm() {
         </Field>
       )}
 
-      <Field label="Email address">
+      <Field label="Email or phone number">
         <input
-          type="email"
           className={inputClass}
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com or 03xx-xxxxxxx"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
           required
         />
       </Field>

@@ -83,20 +83,11 @@ export function Sidebar({ links, profile }: SidebarProps) {
       >
         <div className="flex h-full flex-col overflow-hidden">
           {/* Brand */}
-          <div className={cn("flex items-center px-4 py-4", collapsed && "justify-center px-0")}>
-            <Logo
-              variant={collapsed ? "mark" : "horizontal"}
-              className={collapsed ? "h-8 w-8" : "h-8"}
-            />
-          </div>
 
           <div className="mx-3 border-t border-(--color-sidebar-border)" />
-
           {/* User */}
           <div className={cn("flex items-center gap-3 px-3 py-4", collapsed && "justify-center")}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--color-primary) text-sm font-bold text-(--color-primary-foreground)">
-              {initials}
-            </div>
+            <Logo variant={"mark"} className={collapsed ? "h-8 w-8" : "h-8"} />
             <div
               className={cn(
                 "min-w-0 transition-all duration-200",

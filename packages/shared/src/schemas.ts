@@ -29,11 +29,32 @@ export const storeInputSchema = z.object({
   delivery_fee: z.number().nonnegative().max(100000).optional(),
 });
 
-/** Admin invites a vendor owner and creates their store. */
+/** An email or a phone number — at least one is required to create a login. */
+export const authIdentifierSchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .refine(
+    (v) =>
+      v.includes("@")
+        ? z.string().email().safeParse(v).success
+        : v.replace(/[^\d]/g, "").length >= 10,
+    {
+      message: "Enter a valid email or phone number",
+    },
+  );
+
+/** Admin invites a vendor owner and creates their store. Owner login is email or phone. */
 export const inviteVendorSchema = z.object({
-  email: z.string().email(),
+  ownerIdentifier: authIdentifierSchema.optional(),
   full_name: z.string().min(1).max(120),
   store: storeInputSchema,
+});
+
+/** Admin creates a rider account. Riders never self-register. */
+export const inviteRiderSchema = z.object({
+  identifier: authIdentifierSchema,
+  full_name: z.string().min(1).max(120),
 });
 
 export const profileSchema = z.object({
@@ -100,3 +121,4 @@ export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type RiderLocationInput = z.infer<typeof riderLocationSchema>;
 export type StoreInput = z.infer<typeof storeInputSchema>;
 export type InviteVendorInput = z.infer<typeof inviteVendorSchema>;
+export type InviteRiderInput = z.infer<typeof inviteRiderSchema>;

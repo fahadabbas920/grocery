@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, ClipboardList, LogIn, LogOut, ChevronDown } from "lucide-react";
 import { Logo } from "@grocery/ui";
+import { displayIdentifier } from "@grocery/shared";
 import { useCart } from "@/lib/cart/cart-context";
 import { useSearch } from "@/lib/search-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -34,6 +35,7 @@ export function ShopHeader() {
     router.refresh();
   }
 
+  const identifier = user?.email ? displayIdentifier(user.email) : "";
   const initials = user?.user_metadata?.full_name
     ? (user.user_metadata.full_name as string)
         .split(" ")
@@ -41,7 +43,7 @@ export function ShopHeader() {
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : (user?.email?.[0]?.toUpperCase() ?? "?");
+    : (identifier[0]?.toUpperCase() ?? "?");
 
   return (
     <header className="sticky top-0 z-20 border-b border-(--color-border) bg-(--color-background)">
@@ -70,7 +72,7 @@ export function ShopHeader() {
               {menuOpen && (
                 <div className="absolute right-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-xl border border-(--color-border) bg-(--color-card) py-1 shadow-lg">
                   <p className="truncate px-3 py-2 text-xs text-(--color-muted-foreground)">
-                    {user.email}
+                    {identifier}
                   </p>
                   <div className="border-t border-(--color-border)" />
                   <Link

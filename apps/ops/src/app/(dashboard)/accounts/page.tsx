@@ -1,11 +1,10 @@
-import { UserPlus } from "lucide-react";
 import { PageHeader } from "@grocery/ui";
 import { getAccounts } from "@grocery/db/queries";
 import { requireOpsProfile } from "@/lib/auth";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Button } from "@grocery/ui";
 import { AccountsTable } from "@/components/accounts-table";
+import { InviteRiderButton } from "@/components/invite-rider-button";
 
 export default async function AccountsPage() {
   const profile = await requireOpsProfile();
@@ -19,12 +18,7 @@ export default async function AccountsPage() {
       <PageHeader
         title="Accounts"
         description={`${all.length} users registered`}
-        action={
-          <Button disabled title="Coming soon — requires service-role Server Action">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Invite rider
-          </Button>
-        }
+        action={<InviteRiderButton />}
       />
       <AccountsTable users={all} />
     </div>

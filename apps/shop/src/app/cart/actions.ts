@@ -38,7 +38,9 @@ export async function placeOrder(input: {
 
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  // Fetch authoritative prices + stock + owning store (with fee/open state) for the products.
+  // Fetch prices + stock + owning store (with fee/open state) for the products. This is a
+  // friendly early check only — the DB trigger on order_items (decrement_inventory_on_order_item)
+  // is the atomic, race-condition-safe source of truth for quantity and re-checks it on insert.
   const productIds = parsed.data.items.map((i) => i.product_id);
   const { data: products, error: productsError } = await supabase
     .from("products")
@@ -130,7 +132,10 @@ export async function placeOrder(input: {
       if (itemsError) throw itemsError;
     }
   } catch (e) {
-    await supabase.from("orders").delete().eq("id", order.id); // cascades to children + items
+    // Known gap: deleting the order cascades to already-inserted items for OTHER stores in a
+    // multi-vendor cart, but their inventory decrement (already committed by the trigger) is
+    // not reversed here. Rare in practice today; revisit if multi-vendor carts become common.
+    await supabase.from("orders").delete().eq("id", order.id);
     return { ok: false, error: e instanceof Error ? e.message : "Order failed" };
   }
 

@@ -29,6 +29,7 @@ export function AuthForm() {
   const redirectTo = params.get("redirect") ?? "/";
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [authMethod, setAuthMethod] = useState<"phone" | "email">("phone");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -141,10 +142,32 @@ export function AuthForm() {
         </Field>
       )}
 
-      <Field label="Email or phone number">
+      <div className="flex gap-1.5 rounded-lg bg-(--color-muted) p-1">
+        {(["phone", "email"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => {
+              setAuthMethod(m);
+              setIdentifier("");
+            }}
+            className={`h-8 flex-1 rounded-md text-sm font-medium transition-colors ${
+              authMethod === m
+                ? "bg-(--color-background) text-(--color-foreground) shadow-sm"
+                : "text-(--color-muted-foreground)"
+            }`}
+          >
+            {m === "phone" ? "Phone number" : "Email"}
+          </button>
+        ))}
+      </div>
+
+      <Field label={authMethod === "phone" ? "Phone number" : "Email"}>
         <input
           className={inputClass}
-          placeholder="you@example.com or 03xx-xxxxxxx"
+          type={authMethod === "email" ? "email" : "tel"}
+          inputMode={authMethod === "phone" ? "tel" : "email"}
+          placeholder={authMethod === "phone" ? "03xx-xxxxxxx" : "you@example.com"}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           required

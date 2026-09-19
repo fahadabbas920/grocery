@@ -123,14 +123,11 @@ export default function OrderDetailScreen() {
     }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}`;
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        Alert.alert("Can't open maps", "No app is available to open the map link.");
-        return;
-      }
+      // canOpenURL() for https links is unreliable on Android 11+ (false negatives
+      // even with a browser/Maps app installed) — just attempt to open it.
       await Linking.openURL(url);
     } catch {
-      Alert.alert("Can't open maps", "Something went wrong opening the map link.");
+      Alert.alert("Can't open maps", "No app is available to open the map link.");
     }
   }
 

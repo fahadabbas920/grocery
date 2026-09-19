@@ -16,6 +16,7 @@ export default async function HomePage() {
       categoryId: p.category_id,
       imageUrl: getProductImageUrl(supabase, p.image_path),
       outOfStock: inv?.is_out_of_stock ?? false,
+      stock: inv?.quantity ?? 0,
       storeId: store?.id ?? "",
       storeName: store?.name ?? null,
       deliveryFee: store ? Number(store.delivery_fee) : 0,

@@ -10,6 +10,8 @@ export interface CartLine {
   store_id: string;
   store_name: string;
   delivery_fee: number;
+  /** Available stock at the time this line was added — caps increments. */
+  stock: number;
 }
 
 interface CartState {
@@ -51,10 +53,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsOpen,
       add: (item) =>
         setLines((prev) => {
+          if (item.stock <= 0) return prev;
           const existing = prev.find((l) => l.product_id === item.product_id);
           if (existing) {
             return prev.map((l) =>
-              l.product_id === item.product_id ? { ...l, quantity: l.quantity + 1 } : l,
+              l.product_id === item.product_id
+                ? { ...l, stock: item.stock, quantity: Math.min(l.quantity + 1, item.stock) }
+                : l,
             );
           }
           return [...prev, { ...item, quantity: 1 }];
@@ -63,7 +68,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setLines((prev) =>
           quantity <= 0
             ? prev.filter((l) => l.product_id !== productId)
-            : prev.map((l) => (l.product_id === productId ? { ...l, quantity } : l)),
+            : prev.map((l) =>
+                l.product_id === productId ? { ...l, quantity: Math.min(quantity, l.stock) } : l,
+              ),
         ),
       remove: (productId) => setLines((prev) => prev.filter((l) => l.product_id !== productId)),
       clear: () => setLines([]),

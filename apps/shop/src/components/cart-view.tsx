@@ -112,11 +112,15 @@ export function CartView({ mapsConfig }: CartViewProps) {
                 <p className="text-sm text-(--color-muted-foreground)">
                   PKR {line.price.toLocaleString()}
                 </p>
+                {line.quantity >= line.stock && (
+                  <p className="text-xs text-(--color-destructive)">Only {line.stock} left</p>
+                )}
               </div>
               <QuantityStepper
                 quantity={line.quantity}
                 onDecrement={() => setQuantity(line.product_id, line.quantity - 1)}
                 onIncrement={() => setQuantity(line.product_id, line.quantity + 1)}
+                incrementDisabled={line.quantity >= line.stock}
               />
               <p className="w-24 shrink-0 text-right text-sm font-semibold text-(--color-foreground)">
                 PKR {(line.price * line.quantity).toLocaleString()}

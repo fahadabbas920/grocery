@@ -14,6 +14,7 @@ export interface CatalogItem {
   categoryId: string;
   imageUrl: string | null;
   outOfStock: boolean;
+  stock: number;
   storeId: string;
   storeName: string | null;
   deliveryFee: number;
@@ -424,6 +425,7 @@ export function CatalogBrowser({
                   outOfStock={item.outOfStock}
                   soldBy={item.storeName}
                   quantity={qty}
+                  stock={item.stock}
                   onAdd={() => {
                     add({
                       product_id: item.id,
@@ -432,10 +434,11 @@ export function CatalogBrowser({
                       store_id: item.storeId,
                       store_name: item.storeName ?? "Shop",
                       delivery_fee: item.deliveryFee,
+                      stock: item.stock,
                     });
                     setIsOpen(true);
                   }}
-                  onIncrement={() => setQuantity(item.id, qty + 1)}
+                  onIncrement={() => qty < item.stock && setQuantity(item.id, qty + 1)}
                   onDecrement={() => setQuantity(item.id, qty - 1)}
                 />
               );

@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getOrderWithItems, isMapsEnabled } from "@grocery/db/queries";
+import { getOrderWithItems, getMapsConfig } from "@grocery/db/queries";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { OrderTracker } from "@/components/order-tracker";
 
@@ -27,7 +27,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     throw e;
   }
 
-  const mapsEnabled = await isMapsEnabled(supabase);
+  const mapsConfig = await getMapsConfig(supabase);
 
   const children = (order.store_orders ?? []).map((so) => ({
     id: so.id,
@@ -42,7 +42,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       initialChildren={children}
       total={Number(order.total)}
       address={order.address}
-      mapsEnabled={mapsEnabled}
+      mapsConfig={mapsConfig}
     />
   );
 }

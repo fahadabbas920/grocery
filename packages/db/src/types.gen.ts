@@ -287,6 +287,7 @@ export type Database = {
           full_name: string;
           id: string;
           phone: string | null;
+          phone_verified: boolean;
           role: Database["public"]["Enums"]["user_role"];
         };
         Insert: {
@@ -294,6 +295,7 @@ export type Database = {
           full_name?: string;
           id: string;
           phone?: string | null;
+          phone_verified?: boolean;
           role?: Database["public"]["Enums"]["user_role"];
         };
         Update: {
@@ -301,6 +303,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           phone?: string | null;
+          phone_verified?: boolean;
           role?: Database["public"]["Enums"]["user_role"];
         };
         Relationships: [];

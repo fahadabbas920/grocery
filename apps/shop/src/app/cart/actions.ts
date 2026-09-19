@@ -38,26 +38,38 @@ export async function placeOrder(input: {
 
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  // Fetch authoritative prices + stock + owning store (with fee/open state) for the products.
+  // Fetch prices + stock + owning store (with fee/open state) for the products. This is a
+  // friendly early check only — the DB trigger on order_items (decrement_inventory_on_order_item)
+  // is the atomic, race-condition-safe source of truth for quantity and re-checks it on insert.
   const productIds = parsed.data.items.map((i) => i.product_id);
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select(
-      "id, price, store_id, store:stores(id, name, is_open, delivery_fee), inventory(is_out_of_stock)",
+      "id, name, price, store_id, store:stores(id, name, is_open, delivery_fee), inventory(quantity, is_out_of_stock)",
     )
     .in("id", productIds);
   if (productsError || !products) return { ok: false, error: "Could not load products" };
 
   const productById = new Map(products.map((p) => [p.id, p]));
-  for (const p of products) {
-    const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;
-    if (inv?.is_out_of_stock) return { ok: false, error: "An item is out of stock" };
+  for (const item of parsed.data.items) {
+    const p = productById.get(item.product_id);
+    const inv = p ? (Array.isArray(p.inventory) ? p.inventory[0] : p.inventory) : null;
+    if (inv?.is_out_of_stock)
+      return { ok: false, error: `${p?.name ?? "An item"} is out of stock` };
+    if (inv && item.quantity > inv.quantity) {
+      return {
+        ok: false,
+        error:
+          inv.quantity > 0
+            ? `Only ${inv.quantity} left of ${p?.name} — please adjust the quantity.`
+            : `${p?.name} is out of stock`,
+      };
+    }
   }
   if (parsed.data.items.some((i) => !productById.get(i.product_id)?.store_id)) {
     return { ok: false, error: "Could not load products" };
   }
 
-  // Per-shop metadata (name, open state, delivery fee) keyed by store id.
   const storeMeta = new Map<string, { name: string; is_open: boolean; delivery_fee: number }>();
   for (const p of products) {
     const s = Array.isArray(p.store) ? p.store[0] : p.store;
@@ -82,7 +94,6 @@ export async function placeOrder(input: {
     (byStore.get(storeId) ?? byStore.set(storeId, []).get(storeId)!).push(line);
   }
 
-  // Reject the whole order if any shop is closed.
   for (const storeId of byStore.keys()) {
     const meta = storeMeta.get(storeId);
     if (meta && !meta.is_open) {
@@ -90,7 +101,6 @@ export async function placeOrder(input: {
     }
   }
 
-  // Grand total = every line + each shop's delivery fee.
   let total = 0;
   for (const [storeId, lines] of byStore) {
     total += lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0);
@@ -130,7 +140,10 @@ export async function placeOrder(input: {
       if (itemsError) throw itemsError;
     }
   } catch (e) {
-    await supabase.from("orders").delete().eq("id", order.id); // cascades to children + items
+    // Known gap: deleting the order cascades to already-inserted items for OTHER stores in a
+    // multi-vendor cart, but their inventory decrement (already committed by the trigger) is
+    // not reversed here. Rare in practice today; revisit if multi-vendor carts become common.
+    await supabase.from("orders").delete().eq("id", order.id);
     return { ok: false, error: e instanceof Error ? e.message : "Order failed" };
   }
 

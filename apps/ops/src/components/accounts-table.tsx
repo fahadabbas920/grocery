@@ -25,6 +25,7 @@ interface User {
   full_name: string | null;
   role: string;
   phone: string | null;
+  phone_verified: boolean;
 }
 
 function initials(name: string | null) {
@@ -69,7 +70,18 @@ function UserTable({ users }: { users: User[] }) {
                 </div>
               </TableCell>
               <TableCell className="text-sm text-(--color-muted-foreground)">
-                {u.phone ?? "—"}
+                {u.phone ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    {u.phone}
+                    {!u.phone_verified && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Unverified
+                      </Badge>
+                    )}
+                  </span>
+                ) : (
+                  "—"
+                )}
               </TableCell>
               <TableCell>
                 <Badge variant={ROLE_VARIANT[u.role] ?? "secondary"} className="capitalize">
@@ -86,6 +98,7 @@ function UserTable({ users }: { users: User[] }) {
 
 export function AccountsTable({ users }: { users: User[] }) {
   const admins = users.filter((u) => u.role === "admin");
+  const stockKeepers = users.filter((u) => u.role === "stock_keeper");
   const riders = users.filter((u) => u.role === "rider");
   const customers = users.filter((u) => u.role === "customer");
 
@@ -94,6 +107,7 @@ export function AccountsTable({ users }: { users: User[] }) {
       <TabsList className="mb-4">
         <TabsTrigger value="all">All ({users.length})</TabsTrigger>
         <TabsTrigger value="admin">Admins ({admins.length})</TabsTrigger>
+        <TabsTrigger value="stock_keeper">Stock keepers ({stockKeepers.length})</TabsTrigger>
         <TabsTrigger value="rider">Riders ({riders.length})</TabsTrigger>
         <TabsTrigger value="customer">Customers ({customers.length})</TabsTrigger>
       </TabsList>
@@ -103,6 +117,9 @@ export function AccountsTable({ users }: { users: User[] }) {
       </TabsContent>
       <TabsContent value="admin">
         <UserTable users={admins} />
+      </TabsContent>
+      <TabsContent value="stock_keeper">
+        <UserTable users={stockKeepers} />
       </TabsContent>
       <TabsContent value="rider">
         <UserTable users={riders} />

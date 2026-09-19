@@ -10,6 +10,8 @@ export interface QuantityStepperProps {
   /** Control size — "sm" for the compact drawer, "md" for the cart page. */
   size?: "sm" | "md";
   className?: string;
+  /** Disables the "+" button, e.g. when quantity has reached available stock. */
+  incrementDisabled?: boolean;
 }
 
 /**
@@ -22,6 +24,7 @@ export function QuantityStepper({
   onDecrement,
   size = "md",
   className,
+  incrementDisabled = false,
 }: QuantityStepperProps) {
   const btn = size === "sm" ? "h-7 w-7" : "h-8 w-8";
   const icon = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
@@ -48,9 +51,10 @@ export function QuantityStepper({
       <button
         type="button"
         onClick={onIncrement}
+        disabled={incrementDisabled}
         aria-label="Increase quantity"
         className={cn(
-          "flex items-center justify-center rounded-lg bg-(--color-primary) text-(--color-primary-foreground) transition-colors hover:opacity-90",
+          "flex items-center justify-center rounded-lg bg-(--color-primary) text-(--color-primary-foreground) transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40",
           btn,
         )}
       >

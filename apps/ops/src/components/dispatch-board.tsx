@@ -87,10 +87,10 @@ export function DispatchBoard({
   const unassigned = orders.filter((o) => !o.rider_id).length;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       {/* Active orders */}
       <div className="lg:col-span-2 space-y-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted-foreground)">
             Active orders · {unassigned} awaiting rider
           </p>

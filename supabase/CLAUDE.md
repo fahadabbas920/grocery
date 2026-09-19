@@ -21,6 +21,12 @@ so the backend is reproducible (`supabase db push`).
    `profile-avatars` (owner-only) buckets + policies.
 8. `..._app_settings.sql` — runtime feature flags (key→jsonb). Read by any
    authenticated user, written by admins only. Seeds `maps_enabled = false`.
+9. `..._profile_phone_verified.sql` — `profiles.phone_verified` (default `false`).
+   Phone-number accounts (customer self-signup, or admin-created stock_keeper/
+   rider) authenticate via a synthetic `<digits>@phone.internal` email — see
+   `packages/shared/src/auth.ts`. There's no SMS OTP yet, so this flag just
+   marks the phone as unverified for now; flip it once real OTP verification
+   is added.
 
 ## RLS model (`auth_role()` reads caller role)
 
@@ -39,6 +45,12 @@ Supabase Storage transforms (resize/quality) — see `packages/db/src/storage.ts
 
 - `on-order-assigned` — notification hook (stub; extend for push/SMS).
 - `cleanup-product-image` — deletes orphaned storage objects.
+- `maps-proxy` — server-side geocoding proxy; keeps provider secret keys out of the client.
+- `phone-signup` — creates + auto-confirms a customer account for a phone-based
+  signup (synthetic email under the hood), using the service-role key inside
+  the function only. The shop app never holds a service-role key; it calls
+  this function, then signs in client-side. Real email signups don't use this
+  — they go through Supabase's normal confirmation-link flow untouched.
   Deploy: `supabase functions deploy <name>`.
 
 ## Workflow

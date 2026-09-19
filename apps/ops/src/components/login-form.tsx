@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Button, Input } from "@grocery/ui";
+import { resolveAuthIdentifier } from "@grocery/shared";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,11 @@ export function LoginForm() {
     setError(null);
 
     const supabase = getBrowserSupabase();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { authEmail } = resolveAuthIdentifier(identifier.trim());
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password,
+    });
 
     if (signInError) {
       setError(signInError.message);
@@ -29,11 +34,10 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <Input
-        type="email"
-        placeholder="Email"
-        aria-label="Email address"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email or phone"
+        aria-label="Email or phone number"
+        value={identifier}
+        onChange={(e) => setIdentifier(e.target.value)}
         required
       />
       <Input

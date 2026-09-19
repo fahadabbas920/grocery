@@ -35,73 +35,83 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  /* Brand tokens (BasketBee) */
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-green: var(--brand-green);
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.62 0.19 145); /* grocery green */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.62 0.19 145);
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #2e7d32; /* BasketBee fresh green */
+  --primary-foreground: #ffffff;
+  --secondary: #fff3d6; /* honey tint */
+  --secondary-foreground: #1a1a1a;
+  --muted: #f6f5f1;
+  --muted-foreground: #6b6b6b;
+  --accent: #ffecb3; /* honey tint */
+  --accent-foreground: #1a1a1a;
+  --destructive: #d32f2f;
+  --destructive-foreground: #ffffff;
+  --border: #e7e3da;
+  --input: #e7e3da;
+  --ring: #2e7d32;
   /* Sidebar */
-  --sidebar-bg: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-item-active: oklch(0.93 0.03 145);
-  --sidebar-item-active-text: oklch(0.42 0.19 145);
-  --sidebar-item-hover: oklch(0.96 0.01 145);
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e7e3da;
+  --sidebar-item-active: #e8f5e9;
+  --sidebar-item-active-text: #2e7d32;
+  --sidebar-item-hover: #f5f5f0;
   /* Semantic status */
-  --warning: oklch(0.77 0.17 70);
-  --warning-foreground: oklch(0.145 0 0);
-  --success: oklch(0.62 0.19 145);
-  --success-foreground: oklch(0.985 0 0);
+  --warning: #ffc107; /* BasketBee honey yellow */
+  --warning-foreground: #1a1a1a;
+  --success: #2e7d32;
+  --success-foreground: #ffffff;
+  /* Brand */
+  --brand-yellow: #ffc107;
+  --brand-green: #2e7d32;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.7 0.19 145);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
+  --background: #1a1a1a;
+  --foreground: #ffffff;
+  --card: #242424;
+  --card-foreground: #ffffff;
+  --popover: #242424;
+  --popover-foreground: #ffffff;
+  --primary: #4caf50;
+  --primary-foreground: #1a1a1a;
+  --secondary: #2a2a2a;
+  --secondary-foreground: #ffffff;
+  --muted: #2a2a2a;
+  --muted-foreground: #b0b0b0;
+  --accent: #332b14;
+  --accent-foreground: #ffc107;
+  --destructive: #ef5350;
+  --destructive-foreground: #1a1a1a;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.19 145);
+  --ring: #4caf50;
   /* Sidebar (dark) */
-  --sidebar-bg: oklch(0.205 0 0);
+  --sidebar-bg: #1f1f1f;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-item-active: oklch(0.32 0.06 145);
-  --sidebar-item-active-text: oklch(0.82 0.15 145);
-  --sidebar-item-hover: oklch(0.27 0.02 145);
+  --sidebar-item-active: #1b3d1d;
+  --sidebar-item-active-text: #81c784;
+  --sidebar-item-hover: #262626;
   /* Semantic status (dark) */
-  --warning: oklch(0.8 0.16 70);
-  --warning-foreground: oklch(0.145 0 0);
-  --success: oklch(0.7 0.19 145);
-  --success-foreground: oklch(0.145 0 0);
+  --warning: #ffca28;
+  --warning-foreground: #1a1a1a;
+  --success: #4caf50;
+  --success-foreground: #1a1a1a;
+  /* Brand */
+  --brand-yellow: #ffc107;
+  --brand-green: #4caf50;
 }
 
 @layer base {
@@ -111,6 +121,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
   }
 }
 

@@ -4,9 +4,9 @@ import { BRAND_GREEN_HEX } from "@grocery/shared";
 // PWA manifest — makes the shop installable from the browser.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Grocery",
-    short_name: "Grocery",
-    description: "Order groceries for delivery",
+    name: "BasketBee",
+    short_name: "BasketBee",
+    description: "Order fresh groceries for delivery, from BasketBee",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

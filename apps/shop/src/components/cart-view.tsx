@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmptyState, QuantityStepper } from "@grocery/ui";
+import type { MapProvider } from "@grocery/shared";
 import { useCart } from "@/lib/cart/cart-context";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { placeOrder } from "@/app/cart/actions";
@@ -11,7 +12,11 @@ import { LocationPicker, type PickedLocation } from "./location-picker";
 import { Separator } from "@grocery/ui/components/separator";
 import { toast } from "sonner";
 
-export function CartView() {
+interface CartViewProps {
+  mapsConfig: { provider: MapProvider; publicToken: string | null };
+}
+
+export function CartView({ mapsConfig }: CartViewProps) {
   const router = useRouter();
   const { lines, setQuantity, total, count, clear } = useCart();
   const [location, setLocation] = useState<PickedLocation>({ lat: 0, lng: 0, address: "" });
@@ -107,11 +112,15 @@ export function CartView() {
                 <p className="text-sm text-(--color-muted-foreground)">
                   PKR {line.price.toLocaleString()}
                 </p>
+                {line.quantity >= line.stock && (
+                  <p className="text-xs text-(--color-destructive)">Only {line.stock} left</p>
+                )}
               </div>
               <QuantityStepper
                 quantity={line.quantity}
                 onDecrement={() => setQuantity(line.product_id, line.quantity - 1)}
                 onIncrement={() => setQuantity(line.product_id, line.quantity + 1)}
+                incrementDisabled={line.quantity >= line.stock}
               />
               <p className="w-24 shrink-0 text-right text-sm font-semibold text-(--color-foreground)">
                 PKR {(line.price * line.quantity).toLocaleString()}
@@ -176,6 +185,7 @@ export function CartView() {
                 lat={location.lat}
                 lng={location.lng}
                 onLocationChange={setLocation}
+                mapsConfig={mapsConfig}
               />
             </div>
 

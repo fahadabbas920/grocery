@@ -16,6 +16,8 @@ export interface ProductCardProps {
   quantity?: number;
   onIncrement?: () => void;
   onDecrement?: () => void;
+  /** Available stock — caps the "+" control once quantity reaches it. */
+  stock?: number;
 }
 
 export function ProductCard({
@@ -31,7 +33,9 @@ export function ProductCard({
   quantity = 0,
   onIncrement,
   onDecrement,
+  stock,
 }: ProductCardProps) {
+  const atStockLimit = stock != null && quantity >= stock;
   return (
     <Card
       onClick={onClick}
@@ -81,7 +85,8 @@ export function ProductCard({
                 <span className="w-5 text-center text-sm font-semibold">{quantity}</span>
                 <button
                   onClick={onIncrement}
-                  className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-primary) text-(--color-primary-foreground) text-sm font-bold leading-none"
+                  disabled={atStockLimit}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-primary) text-(--color-primary-foreground) text-sm font-bold leading-none disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   +
                 </button>
@@ -92,12 +97,15 @@ export function ProductCard({
                   e.stopPropagation();
                   onAdd();
                 }}
-                className="flex h-7 items-center gap-1 rounded-lg bg-(--color-primary) px-2.5 text-xs font-semibold text-(--color-primary-foreground) transition-colors hover:opacity-90"
+                className="flex h-7 items-center gap-1 rounded-lg bg-(--color-brand-yellow) px-2.5 text-xs font-semibold text-(--color-foreground) transition-colors hover:opacity-90"
               >
                 + Add
               </button>
             ))}
         </div>
+        {stock != null && stock > 0 && stock <= 5 && (
+          <p className="mt-0.5 text-[11px] text-(--color-destructive)">Only {stock} left</p>
+        )}
       </CardContent>
     </Card>
   );

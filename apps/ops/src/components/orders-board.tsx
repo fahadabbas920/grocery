@@ -182,7 +182,7 @@ export function OrdersBoard({
   return (
     <div className="space-y-5">
       {/* Stats row */}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <StatsCard className="flex-1 rounded-2xl p-4" label="Orders" value={orders.length} />
         <StatsCard
           className="flex-1 rounded-2xl p-4"
@@ -202,7 +202,7 @@ export function OrdersBoard({
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabFilter)}>
-        <TabsList className="h-10 rounded-xl p-1">
+        <TabsList className="h-10 max-w-full justify-start overflow-x-auto rounded-xl p-1">
           <TabsTrigger value="all" className="rounded-lg px-4 text-sm">
             All{" "}
             <span className="ml-1.5 rounded-full bg-(--color-muted) px-1.5 py-0.5 text-xs font-semibold">

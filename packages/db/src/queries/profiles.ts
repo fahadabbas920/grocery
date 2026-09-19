@@ -7,7 +7,7 @@ type DB = SupabaseClient<Database>;
 export async function getAccounts(supabase: DB) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role, phone")
+    .select("id, full_name, role, phone, phone_verified")
     .order("role");
   if (error) throw error;
   return data;
@@ -17,7 +17,7 @@ export async function getAccounts(supabase: DB) {
 export async function getProfile(supabase: DB, userId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role, phone")
+    .select("id, full_name, role, phone, phone_verified")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
